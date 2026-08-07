@@ -273,14 +273,19 @@ function renderVender() {
         </div>
       </div>
 
-      <div class="pos-actions">
-        <button id="btn-combinar" class="pos-btn" style="background:#ffeaa7; font-size:22px;" title="Combinar">🌀</button>
-        <button id="btn-invertir" class="pos-btn" style="background:#e0e0e0;">↺</button>
-        <button id="btn-copiar" class="pos-btn" style="background:#e0e0e0; font-size:20px;" title="Copiar">📋</button>
-        <button id="btn-limpiar" class="pos-btn" style="background:#ffcccc; font-size:20px; color:#c0392b;">🗑</button>
-        <button id="btn-open-cart" class="pos-btn" style="background:#d4edff; font-size:20px; color:#0984e3; position:relative;">
-          🛒
-          ${state.carrito.length > 0 ? `<span class="cart-badge-small">${state.carrito.length}</span>` : ''}
+      <div class="pos-actions" style="background: transparent; border: none;">
+        <button id="btn-combinar" class="icon-action-btn" title="Combinar">🌀</button>
+        <button id="btn-invertir" class="icon-action-btn" title="Invertir"><span style="display:inline-block; transform: rotate(180deg);">R</span></button>
+        <button id="btn-copiar" class="icon-action-btn" title="Copiar">📋</button>
+        <button id="btn-limpiar" class="icon-action-btn" title="Limpiar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+        <button id="btn-open-cart" class="icon-action-btn" style="position:relative;" title="Carrito">
+          ${state.carrito.length > 0 
+            ? `<svg width="26" height="26" viewBox="0 0 24 24" fill="#0984e3" stroke="#0984e3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+               <span class="cart-badge-small">${state.carrito.length}</span>`
+            : `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0984e3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`
+          }
         </button>
       </div>
 
@@ -308,7 +313,7 @@ function renderVender() {
           <span class="currency">$</span>
           <input type="number" id="f-monto" inputmode="decimal" placeholder="0.00" value="${esc(state.sel.monto)}">
         </div>
-        <button class="icon-btn" id="btn-print" style="width:70px;">
+        <button class="icon-print-btn" id="btn-print">
            🖨️
         </button>
       </div>
