@@ -475,21 +475,34 @@ function renderRevisarModal() {
       granTotal += comb.monto * mult;
       const color = COLORS[comb.tipo] || '#333';
       cardsHtml += `
-        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:10px; padding:14px; margin-bottom:10px;">
-          <div style="font-size:13px; color:#6c757d; margin-bottom:8px; font-weight:600;">${esc(descSorteos)}</div>
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span style="font-size:14px; font-weight:800; color:#fff; background:${color}; border-radius:6px; padding:6px 12px; white-space:nowrap;">${ALIAS[comb.tipo] || comb.tipo}</span>
-            <input type="text" class="edit-nums-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}" data-tipo="${comb.tipo}"
-              value="${comb.numeros.join('-')}"
-              style="flex:1; min-width:90px; text-align:center; font-size:22px; font-weight:800; font-family:monospace; border:2px solid #dee2e6; border-radius:8px; padding:8px; color:#000;"
-              maxlength="11" inputmode="none" readonly placeholder="00">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:16px; font-weight:600; color:#495057;">$</span>
-              <input type="number" class="edit-monto-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
-                value="${comb.monto}" min="1" step="1"
-                style="width:80px; text-align:right; font-size:20px; font-weight:700; border:2px solid #dee2e6; border-radius:8px; padding:8px; color:#000;">
-              <button class="btn-del-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
-                style="background:#d63031; color:#fff; border:none; border-radius:8px; width:44px; height:44px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:12px; padding:12px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+          <!-- Fila Superior: Tipo de Jugada + Lotería (izq) y Eliminar (der) -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
+              <span style="font-size:13px; font-weight:800; color:#fff; background:${color}; border-radius:6px; padding:4px 10px; white-space:nowrap; flex-shrink:0;">${ALIAS[comb.tipo] || comb.tipo}</span>
+              <span style="font-size:13px; color:#495057; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(descSorteos)}</span>
+            </div>
+            <button class="btn-del-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}" title="Eliminar jugada"
+              style="background:#d63031; color:#fff; border:none; border-radius:6px; width:36px; height:36px; font-size:18px; font-weight:bold; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✕</button>
+          </div>
+
+          <!-- Fila Inferior: Campos Modificables (Números y Monto) -->
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+              <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; margin:0;">Número(s)</label>
+              <input type="text" class="edit-nums-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}" data-tipo="${comb.tipo}"
+                value="${comb.numeros.join('-')}"
+                style="width:100%; text-align:center; font-size:20px; font-weight:800; font-family:monospace; border:2px solid #ced4da; border-radius:8px; padding:6px; color:#000; background:#fff;"
+                maxlength="11" inputmode="numeric" placeholder="00">
+            </div>
+            <div style="width:115px; display:flex; flex-direction:column; gap:3px;">
+              <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; margin:0;">Monto</label>
+              <div style="display:flex; align-items:center; background:#fff; border:2px solid #ced4da; border-radius:8px; padding:0 8px; height:42px;">
+                <span style="font-size:16px; font-weight:700; color:#495057; margin-right:2px;">$</span>
+                <input type="number" class="edit-monto-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
+                  value="${comb.monto}" min="1" step="1"
+                  style="width:100%; border:none; outline:none; text-align:right; font-size:18px; font-weight:700; color:#000; background:transparent;">
+              </div>
             </div>
           </div>
         </div>
@@ -694,12 +707,14 @@ document.addEventListener('click', (e) => {
     if (state.carrito.length === 0) {
       if (state.sel.numeros.length === 0) {
         showToast("Digite los números.");
-        document.getElementById('pos-display')?.focus();
+        state.ui.focusedField = 'numeros';
+        render();
         return;
       }
       if (state.sel.numTemp.length > 0) {
         showToast("Tiene un número incompleto. Complételo o bórrelo.");
-        document.getElementById('pos-display')?.focus();
+        state.ui.focusedField = 'numeros';
+        render();
         return;
       }
       if (state.sel.sorteosIds.length === 0) {
@@ -711,7 +726,8 @@ document.addEventListener('click', (e) => {
       }
       if (!state.sel.monto || parseFloat(state.sel.monto) <= 0) {
         showToast("Digite un monto a apostar.");
-        document.getElementById('f-monto')?.focus();
+        state.ui.focusedField = 'monto';
+        render();
         return;
       }
       guardarJugada(false);
@@ -1013,9 +1029,14 @@ async function imprimirTickets() {
     state.ui.cobroModalOpen = false;
     mostrarTicketsSeparados(ticketsGenerados);
     
-    // Limpiar tras imprimir
+    // Limpiar tras imprimir y enfocar en número para la siguiente jugada
     state.carrito = []; 
+    state.sel.numeros = [];
+    state.sel.numTemp = '';
+    state.sel.monto = '';
     state.sel.tipos = ['quiniela']; // volver a QN por defecto
+    state.screen = 'vender';
+    state.ui.focusedField = 'numeros';
     render();
   } catch (err) {
     btn.disabled = false; btn.innerHTML = 'Imprimir Tickets';
@@ -1197,7 +1218,15 @@ function mostrarTicketsSeparados(jugadas) {
     </div>
   `;
   document.body.appendChild(overlay);
-  overlay.querySelector('#cerrar-boleta').addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#cerrar-boleta').addEventListener('click', () => {
+    overlay.remove();
+    state.screen = 'vender';
+    state.sel.numeros = [];
+    state.sel.numTemp = '';
+    state.sel.monto = '';
+    state.ui.focusedField = 'numeros';
+    render();
+  });
 }
 
 // ---------------------------------------------------------------------------
