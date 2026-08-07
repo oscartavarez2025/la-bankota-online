@@ -14,7 +14,7 @@ const state = {
   loading: false,
   sel: { sorteosIds: [], tipos: ['quiniela'], numeros: [], numTemp: '', monto: '', isSuperPaleMode: false },
   carrito: [], // array de { id: timestamp, sorteosIds: [...], combinaciones: [...] }
-  ui: { loteriasModalOpen: false, carritoModalOpen: false, revisarModalOpen: false, cobroModalOpen: false, autoSaved: false },
+  ui: { loteriasModalOpen: false, carritoModalOpen: false, revisarModalOpen: false, cobroModalOpen: false, autoSaved: false, focusedField: 'numeros' },
 };
 
 function showToast(msg) {
@@ -260,21 +260,20 @@ function renderVender() {
     <div class="vender-pos">
       <div class="pos-header">
         <button class="btn-open-loterias" id="btn-open-loterias">
-           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#e1614a" stroke-width="2.5" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
         <div class="selected-loterias-display" id="display-sorteos">
           ${sorteosNames || 'Ninguna lotería seleccionada'}
         </div>
-        <div class="pos-date-mini">
-          <input type="date" id="f-fecha" value="${state.sel.fecha || hoy()}">
-        </div>
         <div class="pos-menu-wrap">
-          <button id="btn-menu-float" class="pos-menu-btn" title="Menú">☰</button>
+          <button id="btn-menu-float" class="pos-menu-btn" title="Menú" style="color: #57c97a; font-size: 32px;">☰</button>
         </div>
       </div>
 
       <div class="pos-actions" style="background: transparent; border: none;">
-        <button id="btn-combinar" class="icon-action-btn" title="Combinar">🌀</button>
+        <div class="pos-date-mini">
+          <input type="date" id="f-fecha" value="${state.sel.fecha || hoy()}">
+        </div>
         <button id="btn-invertir" class="icon-action-btn" title="Invertir"><span style="display:inline-block; transform: rotate(180deg);">R</span></button>
         <button id="btn-copiar" class="icon-action-btn" title="Copiar">📋</button>
         <button id="btn-limpiar" class="icon-action-btn" title="Limpiar">
@@ -293,10 +292,9 @@ function renderVender() {
         <button data-tipo="quiniela" class="pos-type-btn ${state.sel.tipos.includes('quiniela') ? 'active' : ''}">QN</button>
         <button data-tipo="pale" class="pos-type-btn ${state.sel.tipos.includes('pale') ? 'active' : ''}">PL</button>
         <button data-tipo="tripleta" class="pos-type-btn ${state.sel.tipos.includes('tripleta') ? 'active' : ''}">TPL</button>
-        <button data-tipo="superpale" class="pos-type-btn ${state.sel.tipos.includes('superpale') ? 'active' : ''}">SPL</button>
       </div>
 
-      <div class="pos-display" id="pos-display" tabindex="0">
+      <div class="pos-display ${state.ui.focusedField === 'numeros' ? 'focused-field' : ''}" id="pos-display">
         ${numStr}
       </div>
 
@@ -309,9 +307,9 @@ function renderVender() {
 
       <div class="pos-bottom">
         <button class="pos-btn" id="btn-guardar" style="background:#a2d2ff; margin-bottom:0; max-width:100px;">GUARDAR</button>
-        <div class="monto-wrap">
+        <div class="monto-wrap ${state.ui.focusedField === 'monto' ? 'focused-field' : ''}" id="monto-wrap">
           <span class="currency">$</span>
-          <input type="number" id="f-monto" inputmode="decimal" placeholder="0.00" value="${esc(state.sel.monto)}">
+          <input type="text" id="f-monto" inputmode="none" readonly placeholder="0.00" value="${esc(state.sel.monto)}">
         </div>
         <button class="icon-print-btn" id="btn-print">
            🖨️
@@ -557,6 +555,16 @@ document.addEventListener('click', (e) => {
     render(); return;
   }
 
+  // Rutear foco del teclado virtual
+  if (e.target.closest('#f-monto') || e.target.closest('#monto-wrap')) {
+    state.ui.focusedField = 'monto';
+    render(); return;
+  }
+  if (e.target.closest('#pos-display')) {
+    state.ui.focusedField = 'numeros';
+    render(); return;
+  }
+
   // Papelera (borrar todo, y preguntar si borra carrito)
   if (e.target.closest('#btn-limpiar')) {
     if (confirm('¿Limpiar digitación actual?')) {
@@ -584,18 +592,30 @@ document.addEventListener('click', (e) => {
   if (keyBtn) {
     if (navigator.vibrate) navigator.vibrate(50);
     const k = keyBtn.dataset.key;
-    if (k === 'del') {
-      if (state.sel.numTemp.length > 0) {
-        state.sel.numTemp = state.sel.numTemp.slice(0, -1);
-      } else if (state.sel.numeros.length > 0) {
-        state.sel.numeros.pop();
+    
+    if (state.ui.focusedField === 'monto') {
+      if (k === 'del') {
+        state.sel.monto = state.sel.monto.slice(0, -1);
+      } else if (k === 'clear') {
+        state.sel.monto = '';
+      } else if (k !== 'clear') {
+        state.sel.monto += k;
       }
-    } else if (k !== 'clear') {
-      if (state.sel.numTemp.length === 1) {
-        state.sel.numeros.push(state.sel.numTemp + k);
-        state.sel.numTemp = '';
-      } else {
-        state.sel.numTemp = k;
+    } else {
+      // Logic para numeros
+      if (k === 'del') {
+        if (state.sel.numTemp.length > 0) {
+          state.sel.numTemp = state.sel.numTemp.slice(0, -1);
+        } else if (state.sel.numeros.length > 0) {
+          state.sel.numeros.pop();
+        }
+      } else if (k !== 'clear') {
+        if (state.sel.numTemp.length === 1) {
+          state.sel.numeros.push(state.sel.numTemp + k);
+          state.sel.numTemp = '';
+        } else {
+          state.sel.numTemp = k;
+        }
       }
     }
     render();
