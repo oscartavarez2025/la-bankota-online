@@ -1154,69 +1154,76 @@ async function imprimirTickets() {
   }
 }
 
-async function compartirTicketsTexto(grupos, totalEfectivo, dateVentaStr) {
-  let shareText = `🎰 *LA BANKOTA* 🎰\n`;
-  shareText += `Vendedor: ${state.user.codigoCorto || state.user.nombre}\n`;
-  shareText += `Fecha: ${dateVentaStr}\n\n`;
+async function compartirTicketsPDF(overlay) {
+  // Recopilar todos los nodos .boleta que están en el overlay
+  const boletas = overlay.querySelectorAll('.boleta');
+  if (!boletas.length) return;
 
-  const esUnSoloTicket = Object.keys(grupos).length === 1;
+  // Mostrar toast de "Generando PDF..."
+  showToast('Generando PDF del ticket...');
 
-  Object.values(grupos).forEach((g, idx) => {
-    if (Object.keys(grupos).length > 1) {
-      shareText += `--- TICKET #${idx + 1} ---\n`;
-    }
-    shareText += `📌 *${g.nombreSorteo}*\n`;
-    
-    // Agrupar jugadas por tipo
-    const quinielas = g.jugadas.filter(j => j.tipo_jugada === 'quiniela');
-    const pales = g.jugadas.filter(j => j.tipo_jugada === 'pale');
-    const tripletas = g.jugadas.filter(j => j.tipo_jugada === 'tripleta');
-    const superpales = g.jugadas.filter(j => j.tipo_jugada === 'superpale');
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a6' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
 
-    if (quinielas.length > 0) {
-      shareText += `*QUINIELAS:*\n`;
-      quinielas.forEach(j => shareText += `QN ${j.numeros.join('-')} -> $${j.monto}\n`);
-    }
-    if (pales.length > 0) {
-      shareText += `*PALÉS:*\n`;
-      pales.forEach(j => shareText += `PL ${j.numeros.join('-')} -> $${j.monto}\n`);
-    }
-    if (tripletas.length > 0) {
-      shareText += `*TRIPLETAS:*\n`;
-      tripletas.forEach(j => shareText += `TPL ${j.numeros.join('-')} -> $${j.monto}\n`);
-    }
-    if (superpales.length > 0) {
-      shareText += `*SÚPER PALÉS:*\n`;
-      superpales.forEach(j => shareText += `SPL ${j.numeros.join('-')} -> $${j.monto}\n`);
-    }
-
-    shareText += `Total: *$${g.total}*\n`;
-    if (esUnSoloTicket && totalEfectivo > 0) {
-      shareText += `Efectivo: $${totalEfectivo}\n`;
-      shareText += `Cambio: $${totalEfectivo - g.total}\n`;
-    }
-    const primerFolio = g.jugadas[0].folio;
-    shareText += `Ticket: ${primerFolio}\n\n`;
-  });
-
-  shareText += `Verifique su jugada. No se cancela después de 5 min.`;
-
-  // Intentar usar Web Share API nativo del navegador móvil (Android / iOS)
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Ticket La Bankota',
-        text: shareText
+    for (let i = 0; i < boletas.length; i++) {
+      const boleta = boletas[i];
+      // Capturar el nodo como imagen con alta resolución
+      const canvas = await html2canvas(boleta, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
       });
-      return;
-    } catch (err) {
-      if (err.name !== 'AbortError') console.error(err);
-    }
-  }
 
-  // Fallback a enlace de WhatsApp directo
-  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-  window.open(waUrl, '_blank');
+      const imgData = canvas.toDataURL('image/png');
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      // Escalar para que quepa en la página con margen de 20pt
+      const margin = 20;
+      const availW = pageW - margin * 2;
+      const ratio = availW / imgW;
+      const drawH = imgH * ratio;
+
+      if (i > 0) pdf.addPage();
+      pdf.addImage(imgData, 'PNG', margin, margin, availW, drawH);
+    }
+
+    // Convertir PDF a Blob
+    const pdfBlob = pdf.output('blob');
+    const fileName = `ticket-la-bankota-${Date.now()}.pdf`;
+    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+    // Intentar compartir el PDF vía Web Share API (Android/iOS)
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+      try {
+        await navigator.share({
+          title: 'Ticket La Bankota',
+          text: 'Ticket de jugada - La Bankota',
+          files: [pdfFile]
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // Usuario canceló
+        console.error('Share error:', err);
+      }
+    }
+
+    // Fallback: descargar el PDF directamente
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+    showToast('PDF descargado. Compártelo por WhatsApp o Telegram.');
+
+  } catch (err) {
+    console.error('Error generando PDF:', err);
+    showToast('Error al generar PDF. Intente de nuevo.');
+  }
 }
 
 function mostrarTicketsSeparados(jugadas) {
@@ -1414,7 +1421,7 @@ function mostrarTicketsSeparados(jugadas) {
   document.body.appendChild(overlay);
 
   overlay.querySelector('#btn-compartir-ticket').addEventListener('click', () => {
-    compartirTicketsTexto(grupos, totalEfectivo, dateVentaStr);
+    compartirTicketsPDF(overlay);
   });
 
   overlay.querySelector('#btn-imprimir-ticket-modal').addEventListener('click', () => {
