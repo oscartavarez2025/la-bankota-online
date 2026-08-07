@@ -162,6 +162,9 @@ function wireMenuItems() {
       const dd = document.getElementById('menu-dropdown');
       if (dd) dd.remove();
       if (tab === 'salir') return logout();
+      if (state.screen !== tab) {
+        history.pushState({ screen: tab }, '');
+      }
       state.screen = tab;
       render();
       if (tab === 'vender') Promise.all([loadLoterias(), loadSucursales()]).then(() => { if (state.screen === 'vender') render(); });
@@ -542,8 +545,18 @@ function renderCobroModal() {
   `;
 }
 
-// Delegación de eventos para la pantalla "Vender"
+// Delegación de eventos para la pantalla "Vender" y navegación global
 document.addEventListener('click', (e) => {
+  if (e.target.closest('.btn-retroceso')) {
+    if (window.history.length > 1) {
+      window.history.back();
+    } else {
+      state.screen = 'vender';
+      render();
+    }
+    return;
+  }
+
   if (state.screen !== 'vender') return;
   
   if (e.target.closest('#btn-open-loterias')) {
@@ -845,7 +858,15 @@ document.addEventListener('change', (e) => {
       state.sel.sorteosIds = state.sel.sorteosIds.filter(id => id !== val);
     }
   }
-  if (e.target.id === 'chk-sp-mode') state.sel.isSuperPaleMode = e.target.checked;
+  if (e.target.id === 'chk-sp-mode') {
+    state.sel.isSuperPaleMode = e.target.checked;
+    if (e.target.checked) {
+      state.sel.tipos = ['superpale'];
+    } else {
+      state.sel.tipos = state.sel.tipos.filter(t => t !== 'superpale');
+      if (state.sel.tipos.length === 0) state.sel.tipos = ['quiniela'];
+    }
+  }
   if (e.target.id === 'f-monto') state.sel.monto = e.target.value;
 });
 
@@ -1192,9 +1213,12 @@ function renderHistorial() {
   if (!historialLoaded) return `<div class="empty-state"><span class="spinner"></span></div>`;
   const items = historialCache;
   return `
+    <div style="display:flex; align-items:center; margin-bottom:14px; padding: 0 4px;">
+      <button class="btn-retroceso" style="background:transparent; border:none; color:var(--gold); font-size:28px; cursor:pointer; margin-right:10px; padding:0;">←</button>
+      <h2 style="font-family:var(--font-display); font-size:22px; color:var(--gold); margin:0; letter-spacing:0.5px;">HISTORIAL DE HOY</h2>
+    </div>
     <div class="card">
-      <h2>Historial de hoy</h2>
-      <p class="sub">${items.length} jugada(s) — ${hoy()}</p>
+      <p class="sub" style="margin-bottom:0;">${items.length} jugada(s) — ${hoy()}</p>
     </div>
     ${items.length ? items.map(j => `
       <div class="list-item">
@@ -1223,8 +1247,11 @@ function renderCaja() {
   if (!cajaLoaded) return `<div class="empty-state"><span class="spinner"></span></div>`;
   const r = resumenCache || {};
   return `
+    <div style="display:flex; align-items:center; margin-bottom:14px; padding: 0 4px;">
+      <button class="btn-retroceso" style="background:transparent; border:none; color:var(--gold); font-size:28px; cursor:pointer; margin-right:10px; padding:0;">←</button>
+      <h2 style="font-family:var(--font-display); font-size:22px; color:var(--gold); margin:0; letter-spacing:0.5px;">CIERRE DE CAJA</h2>
+    </div>
     <div class="card">
-      <h2>Cierre de caja</h2>
       <p class="sub">Resumen del día — ${hoy()}</p>
       <div class="stat-grid">
         <div class="stat-box"><div class="v">${fmtMoney(r.total_vendido)}</div><div class="l">Vendido</div></div>
@@ -1271,8 +1298,11 @@ function renderResultados() {
     return `<div class="empty-state"><div class="icon">🏆</div>No hay sorteos configurados todavía.</div>`;
   }
   return `
+    <div style="display:flex; align-items:center; margin-bottom:14px; padding: 0 4px;">
+      <button class="btn-retroceso" style="background:transparent; border:none; color:var(--gold); font-size:28px; cursor:pointer; margin-right:10px; padding:0;">←</button>
+      <h2 style="font-family:var(--font-display); font-size:22px; color:var(--gold); margin:0; letter-spacing:0.5px;">CARGAR RESULTADO</h2>
+    </div>
     <div class="card">
-      <h2>Cargar resultado</h2>
       <p class="sub">Liquida automáticamente las jugadas pendientes del sorteo.</p>
       <form id="form-resultado">
         <div class="field">
@@ -1322,8 +1352,27 @@ document.addEventListener('submit', async (e) => {
   }
   
   if (state.token) await Promise.all([loadLoterias(), loadSucursales()]);
+  
+  if (state.screen === 'vender') {
+    history.replaceState({ screen: 'vender' }, '');
+  }
+  
   render();
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 })();
+
+// Interceptar botón físico de atrás del móvil
+window.addEventListener('popstate', (e) => {
+  if (e.state && e.state.screen) {
+    state.screen = e.state.screen;
+  } else {
+    state.screen = 'vender'; 
+  }
+  
+  if (state.screen === 'historial') loadHistorial();
+  else if (state.screen === 'caja') loadCaja();
+  else if (state.screen === 'resultados') loadResultadosScreenData();
+  else render();
+});
