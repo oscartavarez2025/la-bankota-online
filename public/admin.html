@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.5">
+<title>La Bankota — Panel de Plataforma (Super Admin)</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .admin-header {
+    background: linear-gradient(135deg, #12261b 0%, #1a3325 100%);
+    border-bottom: 2px solid var(--gold);
+  }
+  .badge-platform {
+    background: rgba(229, 177, 62, 0.15);
+    color: var(--gold);
+    border: 1px solid var(--gold-dark);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .stat-val {
+    font-family: var(--font-display);
+    font-size: 32px;
+    color: var(--gold);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .table-admin {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .table-admin th, .table-admin td {
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-admin th {
+    background: var(--surface-2);
+    color: var(--gold);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .table-admin tr:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  .modal-backdrop {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .modal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: 100%; max-width: 520px;
+    padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .tag-accion {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+  }
+  .tag-creada { background: rgba(87, 201, 122, 0.2); color: #57c97a; }
+  .tag-anulada { background: rgba(225, 97, 74, 0.2); color: #e1614a; }
+  .tag-resultado { background: rgba(229, 177, 62, 0.2); color: #e5b13e; }
+  .tag-caja { background: rgba(64, 169, 255, 0.2); color: #40a9ff; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="js/admin.js"></script>
+</body>
+</html>

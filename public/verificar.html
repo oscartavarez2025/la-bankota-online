@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <title>Verificar Boleta — LA BANKOTA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@600;700&display=swap');
+    :root{--bg:#0c1a13;--surface:#12261b;--surface2:#1a3325;--border:#2b4a37;--gold:#e5b13e;--text:#f1ede1;--muted:#93a897;--win:#57c97a;--loss:#e1614a}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',Arial,sans-serif;background:var(--bg);color:var(--text);padding:20px;min-height:100vh}
+    .wrap{max-width:420px;margin:20px auto}
+    .logo{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--gold);text-align:center;letter-spacing:1px;margin-bottom:18px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+    .big{font-size:17px;font-weight:700;margin-bottom:10px}
+    .mono{font-family:'IBM Plex Mono',monospace}
+    .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}
+    .row span:first-child{color:var(--muted)}
+    .estado{font-size:22px;font-weight:800;text-align:center;margin:16px 0;padding:10px;border-radius:10px}
+    .estado.ganado{background:rgba(87,201,122,.15);color:var(--win)}
+    .estado.perdido{background:rgba(225,97,74,.15);color:var(--loss)}
+    .estado.pendiente{background:rgba(229,177,62,.15);color:var(--gold)}
+    .estado.anulado{background:rgba(147,168,151,.15);color:var(--muted)}
+    input{width:100%;min-height:46px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:0 12px;font-size:16px;margin-bottom:10px}
+    button{width:100%;min-height:46px;border:none;border-radius:9px;background:var(--gold);color:#1a1200;font-weight:700;font-size:15px}
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">LA BANKOTA</div>
+    <div class="card"><div id="content"></div></div>
+  </div>
+<script>
+function getParam(name){ return new URL(location.href).searchParams.get(name); }
+function fmtMoney(n){ return 'RD$'+Number(n||0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderForm(codigoEmpresa, folio, error) {
+  document.getElementById('content').innerHTML = `
+    ${error ? `<div class="big" style="color:var(--loss)">${esc(error)}</div>` : ''}
+    <label>Código de empresa (indicado en tu boleta)</label>
+    <input id="f-codigo" value="${esc(codigoEmpresa||'')}" placeholder="ej. banca-demo">
+    <label>Folio</label>
+    <input id="f-folio" value="${esc(folio||'')}" placeholder="T-XXXXXXX-XXXXXXXXXX">
+    <button id="btn-buscar">Verificar boleta</button>
+  `;
+  document.getElementById('btn-buscar').addEventListener('click', () => {
+    const c = document.getElementById('f-codigo').value.trim();
+    const f = document.getElementById('f-folio').value.trim();
+    if (!c || !f) return renderForm(c, f, 'Completa ambos campos.');
+    buscar(c, f);
+  });
+}
+
+async function buscar(codigoEmpresa, folio) {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div class="big">Buscando folio <span class="mono">${esc(folio)}</span>…</div>`;
+  try {
+    const res = await fetch(`/api/verificar/${encodeURIComponent(codigoEmpresa)}/${encodeURIComponent(folio)}`);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return renderForm(codigoEmpresa, folio, data.error || 'Folio no encontrado.');
+    const j = data.jugada;
+    el.innerHTML = `
+      <div class="big mono">Folio ${esc(j.folio)}</div>
+      <div class="row"><span>Sorteo</span><span>${esc(j.sorteo_nombre || '—')}</span></div>
+      <div class="row"><span>Jugada</span><span>${esc(j.tipo_jugada)}</span></div>
+      <div class="row"><span>Fecha sorteo</span><span>${esc(j.fecha_sorteo)}</span></div>
+      <div class="row"><span>Números</span><span class="mono">${(j.numeros||[]).join(' - ')}</span></div>
+      <div class="row"><span>Vendedor</span><span>${esc(j.vendedor_nombre || '—')}</span></div>
+      <div class="estado ${esc(j.estado)}">${esc(j.estado).toUpperCase()}</div>
+      ${j.premio > 0 ? `<div class="row"><span>Premio</span><span class="mono">${fmtMoney(j.premio)}</span></div>` : ''}
+      <button id="btn-otra" style="margin-top:14px;background:transparent;border:1px solid var(--border);color:var(--text)">Verificar otra boleta</button>
+    `;
+    document.getElementById('btn-otra').addEventListener('click', () => renderForm());
+  } catch (e) {
+    renderForm(codigoEmpresa, folio, 'Error de conexión al verificar.');
+  }
+}
+
+(function () {
+  const codigoEmpresa = getParam('empresa');
+  const folio = getParam('folio');
+  if (codigoEmpresa && folio) buscar(codigoEmpresa, folio);
+  else renderForm(codigoEmpresa, folio);
+})();
+</script>
+</body>
+</html>
