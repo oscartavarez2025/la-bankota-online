@@ -538,29 +538,29 @@ function renderCobroModal() {
   return `
     <div class="pos-modal-overlay">
       <div class="pos-modal">
-        <div class="pos-modal-header" style="text-align:center;">
-          <h3 style="font-size:22px; margin:0;">COBRO Y CAMBIO</h3>
+        <div class="pos-modal-header" style="padding:10px; text-align:center;">
+          <h3 style="font-size:18px; margin:0;">COBRO Y CAMBIO</h3>
         </div>
-        <div class="pos-modal-list" style="display:flex; flex-direction:column; justify-content:center; padding:20px;">
-          <div style="font-size:20px; text-align:center; margin-bottom:20px; color:#495057;">
-            Total a pagar: <b style="font-size:28px; color:#000; font-weight:800;">${fmtMoney(granTotal)}</b>
+        <div class="pos-modal-list" style="padding:10px 14px; display:flex; flex-direction:column; justify-content:flex-start; gap:8px;">
+          <div style="font-size:15px; text-align:center; color:#495057;">
+            Total a pagar: <b style="font-size:22px; color:#000; font-weight:800;">${fmtMoney(granTotal)}</b>
           </div>
           
-          <div style="margin-bottom:20px;">
-            <label style="font-size:14px; font-weight:700; color:#6c757d; text-transform:uppercase; display:block; margin-bottom:8px; text-align:center;">Efectivo recibido del cliente</label>
-            <div style="display:flex; align-items:center; background:#fff9c4; border:2.5px solid #f39c12; border-radius:10px; padding:0 14px; height:56px; box-shadow:0 0 0 2px #f39c12 inset;">
-              <span style="font-size:28px; font-weight:800; color:#000; margin-right:8px;">$</span>
+          <div>
+            <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; display:block; margin-bottom:2px; text-align:center;">Efectivo recibido del cliente</label>
+            <div style="display:flex; align-items:center; background:#fff9c4; border:2px solid #f39c12; border-radius:8px; padding:0 10px; height:44px; box-shadow:0 0 0 2px #f39c12 inset;">
+              <span style="font-size:20px; font-weight:800; color:#000; margin-right:6px;">$</span>
               <input type="number" id="f-efectivo" inputmode="decimal" placeholder="0.00" 
-                style="width:100%; border:none; outline:none; font-size:28px; font-weight:800; color:#000; background:transparent; text-align:right;" autofocus>
+                style="width:100%; border:none; outline:none; font-size:22px; font-weight:800; color:#000; background:transparent; text-align:right;" autofocus>
             </div>
           </div>
           
-          <div id="cambio-display" style="font-size:24px; text-align:center; font-weight:800; color:#d63031; padding:14px; background:#f8f9fa; border-radius:10px; border:1px solid #dee2e6;">
+          <div id="cambio-display" style="font-size:18px; text-align:center; font-weight:800; color:#d63031; padding:8px; background:#f8f9fa; border-radius:8px; border:1px solid #dee2e6;">
             Falta: ${fmtMoney(granTotal)}
           </div>
         </div>
         
-        <div class="pos-modal-actions">
+        <div class="pos-modal-actions compact-actions" style="padding:10px 14px;">
           <button id="btn-cancelar-imprimir" style="background:#d63031; color:#fff;">Cancelar</button>
           <button id="btn-confirmar-imprimir" style="background:#0984e3; color:#fff;">Imprimir Tickets</button>
         </div>

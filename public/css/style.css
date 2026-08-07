@@ -39,13 +39,14 @@
    Toque táctil: 48px mínimo de altura
    ===================================================== */
 .pos-modal { font-size: 16px; }
-.pos-modal h3 { font-size: 22px; font-weight: 800; margin: 0; }
-.pos-modal label { font-size: 16px; }
+.pos-modal h3 { font-size: 20px; font-weight: 800; margin: 0; }
+.pos-modal label { font-size: 14px; }
 .pos-modal p, .pos-modal span, .pos-modal div { font-size: inherit; }
 /* Todos los inputs dentro de pos-modal usan 16px para evitar zoom en iOS */
-.pos-modal input, .pos-modal select { font-size: 16px !important; min-height: 48px; }
+.pos-modal input, .pos-modal select { font-size: 16px; }
 /* Botones táctiles con mínimo 48px */
-.pos-modal-actions button { min-height: 60px; font-size: 18px !important; }
+.pos-modal-actions button { min-height: 48px; font-size: 16px; }
+.compact-actions button { min-height: 44px !important; font-size: 15px !important; }
 
 html, body {
   margin: 0;
