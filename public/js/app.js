@@ -1154,10 +1154,75 @@ async function imprimirTickets() {
   }
 }
 
+async function compartirTicketsTexto(grupos, totalEfectivo, dateVentaStr) {
+  let shareText = `🎰 *LA BANKOTA* 🎰\n`;
+  shareText += `Vendedor: ${state.user.codigoCorto || state.user.nombre}\n`;
+  shareText += `Fecha: ${dateVentaStr}\n\n`;
+
+  const esUnSoloTicket = Object.keys(grupos).length === 1;
+
+  Object.values(grupos).forEach((g, idx) => {
+    if (Object.keys(grupos).length > 1) {
+      shareText += `--- TICKET #${idx + 1} ---\n`;
+    }
+    shareText += `📌 *${g.nombreSorteo}*\n`;
+    
+    // Agrupar jugadas por tipo
+    const quinielas = g.jugadas.filter(j => j.tipo_jugada === 'quiniela');
+    const pales = g.jugadas.filter(j => j.tipo_jugada === 'pale');
+    const tripletas = g.jugadas.filter(j => j.tipo_jugada === 'tripleta');
+    const superpales = g.jugadas.filter(j => j.tipo_jugada === 'superpale');
+
+    if (quinielas.length > 0) {
+      shareText += `*QUINIELAS:*\n`;
+      quinielas.forEach(j => shareText += `QN ${j.numeros.join('-')} -> $${j.monto}\n`);
+    }
+    if (pales.length > 0) {
+      shareText += `*PALÉS:*\n`;
+      pales.forEach(j => shareText += `PL ${j.numeros.join('-')} -> $${j.monto}\n`);
+    }
+    if (tripletas.length > 0) {
+      shareText += `*TRIPLETAS:*\n`;
+      tripletas.forEach(j => shareText += `TPL ${j.numeros.join('-')} -> $${j.monto}\n`);
+    }
+    if (superpales.length > 0) {
+      shareText += `*SÚPER PALÉS:*\n`;
+      superpales.forEach(j => shareText += `SPL ${j.numeros.join('-')} -> $${j.monto}\n`);
+    }
+
+    shareText += `Total: *$${g.total}*\n`;
+    if (esUnSoloTicket && totalEfectivo > 0) {
+      shareText += `Efectivo: $${totalEfectivo}\n`;
+      shareText += `Cambio: $${totalEfectivo - g.total}\n`;
+    }
+    const primerFolio = g.jugadas[0].folio;
+    shareText += `Ticket: ${primerFolio}\n\n`;
+  });
+
+  shareText += `Verifique su jugada. No se cancela después de 5 min.`;
+
+  // Intentar usar Web Share API nativo del navegador móvil (Android / iOS)
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: 'Ticket La Bankota',
+        text: shareText
+      });
+      return;
+    } catch (err) {
+      if (err.name !== 'AbortError') console.error(err);
+    }
+  }
+
+  // Fallback a enlace de WhatsApp directo
+  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+  window.open(waUrl, '_blank');
+}
+
 function mostrarTicketsSeparados(jugadas) {
   // Obtener efectivo ingresado en el input
   const efectivoInput = document.getElementById('f-efectivo');
-  const totalEfectivo = efectivoInput ? parseFloat(efectivoInput.value) || 0 : 0;
+  const totalEfectivo = efectivoInput ? parseFloat(efectivoInput.value.replace(/,/g, '')) || 0 : 0;
 
   // Agrupar jugadas por Lotería(s) para imprimir tickets separados por sorteo
   const grupos = {};
@@ -1188,6 +1253,9 @@ function mostrarTicketsSeparados(jugadas) {
     grupos[key].jugadas.push(j);
     grupos[key].total += j.monto;
   });
+
+  // Determinar si es un solo ticket o múltiples
+  const esUnSoloTicket = Object.keys(grupos).length === 1;
 
   // Helpers de formato de fecha y hora
   const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -1259,9 +1327,9 @@ function mostrarTicketsSeparados(jugadas) {
     const linkVerif = `${location.origin}/verificar.html?empresa=la-bankota&folio=${encodeURIComponent(primerFolio)}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(linkVerif)}`;
 
-    // Calcular cambio local para este boleto
+    // Calcular cambio local SOLO si es un solo ticket
     let efectivoSeccion = '';
-    if (totalEfectivo > 0) {
+    if (totalEfectivo > 0 && esUnSoloTicket) {
       efectivoSeccion = `
         <div class="row" style="font-size:12px; display:flex; justify-content:space-between; width:100%; margin-top:4px;">
           <span>Efectivo:</span>
@@ -1278,7 +1346,7 @@ function mostrarTicketsSeparados(jugadas) {
     const horasSorteoFmt = g.horaSorteo.split(' y ').map(fmtHoraAmPm).join(' y ');
 
     return `
-      <div class="boleta" style="margin-bottom: 20px; background: #fff; padding: 20px; border: 1px solid #ccc; color:#000; text-align:center; font-family:'Courier New', monospace;">
+      <div class="boleta" style="margin-bottom: 16px; background: #fff; padding: 20px; border: 1px solid #ccc; color:#000; text-align:center; font-family:'Courier New', monospace; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.15);">
         <div style="font-size:18px; font-weight:bold; margin-bottom:4px;">LA BANKOTA</div>
         <div style="font-size:11px; margin-bottom:8px;">
           Vendedor: ${state.user.codigoCorto || state.user.nombre}<br>
@@ -1322,12 +1390,37 @@ function mostrarTicketsSeparados(jugadas) {
   overlay.style.overflowY = 'auto';
   
   overlay.innerHTML = `
-    <div style="width: 100%; max-width: 320px; margin: 20px auto;">
+    <div style="width: 100%; max-width: 340px; margin: 20px auto; padding-bottom: 20px;">
       ${ticketsHtml}
-      <button class="btn btn-primary" style="margin-top:10px; width:100%;" id="cerrar-boleta">Cerrar y Nueva Jugada</button>
+      
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+        <button id="btn-compartir-ticket" 
+          style="width:100%; background:#25D366; color:#fff; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 0 #1da851;">
+          <span style="font-size:20px;">📲</span> Compartir por WhatsApp / Telegram
+        </button>
+
+        <button id="btn-imprimir-ticket-modal" 
+          style="width:100%; background:#0984e3; color:#fff; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; opacity:0.85;">
+          <span style="font-size:18px;">🖨️</span> Imprimir Ticket (Próximamente)
+        </button>
+
+        <button id="cerrar-boleta" 
+          style="width:100%; background:#f39c12; color:#fff; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 3px 0 #d35400;">
+          Cerrar y Nueva Jugada
+        </button>
+      </div>
     </div>
   `;
   document.body.appendChild(overlay);
+
+  overlay.querySelector('#btn-compartir-ticket').addEventListener('click', () => {
+    compartirTicketsTexto(grupos, totalEfectivo, dateVentaStr);
+  });
+
+  overlay.querySelector('#btn-imprimir-ticket-modal').addEventListener('click', () => {
+    showToast("Impresión térmica disponible próximamente.");
+  });
+
   overlay.querySelector('#cerrar-boleta').addEventListener('click', () => {
     overlay.remove();
     state.screen = 'vender';
