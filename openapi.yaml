@@ -1,0 +1,391 @@
+openapi: 3.0.3
+info:
+  title: LA_BANKOTA API — Banca de Lotería (SaaS multi-tenant)
+  version: "2.0.0"
+  description: >
+    API REST del sistema de banca de lotería multi-tenant. Hay dos tipos de
+    autenticación separados que NUNCA se mezclan: tokens de "tenant" (usuarios
+    de una banca cliente: admin_empresa, admin_sucursal, vendedor) y tokens de
+    "plataforma" (staff de LA_BANKOTA: super_admin, soporte). Ambos son JWT
+    Bearer, pero un token de un tipo es rechazado en los endpoints del otro.
+
+servers:
+  - url: http://localhost:3500
+
+components:
+  securitySchemes:
+    tenantAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtenido en POST /api/auth/login
+    platformAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token obtenido en POST /api/plataforma/login
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        details: { type: object, nullable: true }
+
+    LoginTenantRequest:
+      type: object
+      required: [codigoEmpresa, usuario, password]
+      properties:
+        codigoEmpresa: { type: string, example: banca-central }
+        usuario: { type: string }
+        password: { type: string }
+
+    LoginPlatformRequest:
+      type: object
+      required: [usuario, password]
+      properties:
+        usuario: { type: string }
+        password: { type: string }
+
+    CrearEmpresaRequest:
+      type: object
+      required: [codigo, nombreComercial, adminNombre, adminUsuario, adminPassword]
+      properties:
+        codigo: { type: string, pattern: '^[a-z0-9][a-z0-9-]{2,48}[a-z0-9]$' }
+        nombreComercial: { type: string }
+        razonSocial: { type: string }
+        rnc: { type: string }
+        adminNombre: { type: string }
+        adminUsuario: { type: string }
+        adminPassword: { type: string, minLength: 8 }
+
+    ResultadoOficialRequest:
+      type: object
+      required: [loteriaCatalogoId, fecha, horaSorteo, num1, num2, num3]
+      properties:
+        loteriaCatalogoId: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        horaSorteo: { type: string, example: "19:30" }
+        num1: { type: string, pattern: '^[0-9]{2}$' }
+        num2: { type: string, pattern: '^[0-9]{2}$' }
+        num3: { type: string, pattern: '^[0-9]{2}$' }
+
+    CrearSucursalRequest:
+      type: object
+      required: [nombre, codigo]
+      properties:
+        nombre: { type: string }
+        codigo: { type: string }
+        direccion: { type: string }
+
+    ActivarLoteriaRequest:
+      type: object
+      properties:
+        loteriaCatalogoId: { type: string, format: uuid }
+        nombrePersonalizado: { type: string }
+      description: Debe indicarse uno de los dos campos.
+
+    CrearSorteoRequest:
+      type: object
+      required: [empresaLoteriaId, nombre, hora]
+      properties:
+        empresaLoteriaId: { type: string, format: uuid }
+        nombre: { type: string }
+        hora: { type: string, example: "12:30" }
+
+    PagoRequest:
+      type: object
+      required: [tipoJugada, multiplicador]
+      properties:
+        tipoJugada: { type: string, enum: [quiniela, pale, tripleta] }
+        posicion: { type: string, enum: ["1ra", "2da", "3ra"], nullable: true }
+        multiplicador: { type: number, exclusiveMinimum: 0 }
+        sucursalId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Si se omite, aplica como default de toda la empresa.
+
+    CrearJugadaRequest:
+      type: object
+      required: [sorteo_id, tipo_jugada, numeros, monto]
+      properties:
+        sorteo_id: { type: string, format: uuid }
+        tipo_jugada: { type: string, enum: [quiniela, pale, tripleta] }
+        numeros:
+          type: array
+          items: { type: string, pattern: '^[0-9]{2}$' }
+          minItems: 1
+          maxItems: 3
+        posicion: { type: string, enum: ["1ra", "2da", "3ra"], nullable: true }
+        monto: { type: number, exclusiveMinimum: 0 }
+        fecha_sorteo: { type: string, format: date }
+        sucursal_id:
+          type: string
+          format: uuid
+          description: Requerido solo si quien vende es admin_empresa.
+
+    CargarResultadoRequest:
+      type: object
+      required: [sorteo_id, fecha, num1, num2, num3]
+      properties:
+        sorteo_id: { type: string, format: uuid }
+        fecha: { type: string, format: date }
+        num1: { type: string, pattern: '^[0-9]{2}$' }
+        num2: { type: string, pattern: '^[0-9]{2}$' }
+        num3: { type: string, pattern: '^[0-9]{2}$' }
+
+    CrearUsuarioRequest:
+      type: object
+      required: [nombre, usuario, password, rol]
+      properties:
+        nombre: { type: string }
+        usuario: { type: string, minLength: 3 }
+        password: { type: string, minLength: 8 }
+        rol: { type: string, enum: [admin_empresa, admin_sucursal, vendedor] }
+        sucursal_id: { type: string, format: uuid }
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Login de un usuario de una banca (tenant)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginTenantRequest' } } }
+      responses:
+        '200': { description: Token emitido }
+        '401': { description: Credenciales inválidas o empresa inactiva, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: Demasiados intentos }
+
+  /api/plataforma/login:
+    post:
+      tags: [Autenticación]
+      summary: Login de staff de la plataforma (super_admin/soporte)
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginPlatformRequest' } } }
+      responses:
+        '200': { description: Token emitido }
+        '401': { description: Credenciales inválidas }
+
+  /api/plataforma/empresas:
+    post:
+      tags: [Plataforma]
+      summary: Onboarding — crea una nueva empresa (tenant) y su primer admin_empresa
+      security: [{ platformAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearEmpresaRequest' } } }
+      responses:
+        '200': { description: Empresa creada }
+        '400': { description: Código de empresa duplicado u otros datos inválidos }
+    get:
+      tags: [Plataforma]
+      summary: Lista todas las empresas (para soporte)
+      security: [{ platformAuth: [] }]
+      responses:
+        '200': { description: Lista de empresas }
+
+  /api/plataforma/loterias-catalogo:
+    get:
+      tags: [Plataforma]
+      summary: Lista el catálogo global de loterías
+      security: [{ platformAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Plataforma]
+      summary: Crea una lotería en el catálogo global (ej. Lotería Nacional)
+      security: [{ platformAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [nombre], properties: { nombre: { type: string }, pais: { type: string } } } } }
+      responses: { '200': { description: Creada } }
+
+  /api/plataforma/resultados-oficiales:
+    get:
+      tags: [Plataforma]
+      summary: Lista los resultados oficiales cargados (compartidos entre todas las empresas)
+      security: [{ platformAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Plataforma]
+      summary: Carga el resultado oficial de un sorteo real (compartido)
+      security: [{ platformAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ResultadoOficialRequest' } } }
+      responses:
+        '200': { description: Guardado }
+        '400': { description: Ya existe un resultado para esa lotería/fecha/hora }
+
+  /api/sucursales:
+    get:
+      tags: [Sucursales]
+      summary: Lista sucursales visibles según el rol del usuario
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Sucursales]
+      summary: Crea una sucursal (solo admin_empresa)
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearSucursalRequest' } } }
+      responses: { '200': { description: Creada } }
+
+  /api/loterias:
+    get:
+      tags: [Loterías]
+      summary: Lista loterías activadas por la empresa, con sus sorteos
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Loterías]
+      summary: Activa una lotería del catálogo o crea una privada (solo admin_empresa)
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/ActivarLoteriaRequest' } } }
+      responses: { '200': { description: Activada/creada } }
+
+  /api/sorteos:
+    post:
+      tags: [Loterías]
+      summary: Crea un sorteo (horario) dentro de una lotería activada (solo admin_empresa)
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearSorteoRequest' } } }
+      responses: { '200': { description: Creado } }
+
+  /api/pagos:
+    get:
+      tags: [Tabla de pagos]
+      summary: Consulta multiplicadores efectivos (default de empresa + override de sucursal)
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+    put:
+      tags: [Tabla de pagos]
+      summary: Crea/actualiza un multiplicador (default de empresa u override de sucursal)
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PagoRequest' } } }
+      responses: { '200': { description: Guardado } }
+
+  /api/jugadas:
+    get:
+      tags: [Jugadas]
+      summary: Lista jugadas (filtradas por rol/sucursal automáticamente)
+      security: [{ tenantAuth: [] }]
+      parameters:
+        - { name: fecha, in: query, schema: { type: string, format: date } }
+        - { name: estado, in: query, schema: { type: string, enum: [pendiente, ganado, perdido, anulado] } }
+        - { name: vendedor_id, in: query, schema: { type: string, format: uuid } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Jugadas]
+      summary: Vende una jugada (boleta)
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearJugadaRequest' } } }
+      responses:
+        '200': { description: Jugada registrada, incluye folio }
+        '400': { description: Validación fallida (números inválidos, sorteo no encontrado, etc.) }
+
+  /api/jugadas/{id}/anular:
+    post:
+      tags: [Jugadas]
+      summary: Anula una jugada pendiente (respeta el alcance del rol)
+      security: [{ tenantAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        '200': { description: Anulada }
+        '403': { description: Sin permiso sobre esa jugada }
+        '404': { description: No encontrada }
+
+  /api/verificar/{codigoEmpresa}/{folio}:
+    get:
+      tags: [Público]
+      summary: Verificación pública de una boleta por folio (sin autenticación)
+      parameters:
+        - { name: codigoEmpresa, in: path, required: true, schema: { type: string } }
+        - { name: folio, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Datos de la jugada }
+        '404': { description: Empresa o folio no encontrado }
+
+  /api/resultados:
+    get:
+      tags: [Resultados]
+      summary: Lista resultados cargados por la empresa
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Resultados]
+      summary: Carga el resultado de un sorteo propio y liquida las jugadas pendientes
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CargarResultadoRequest' } } }
+      responses:
+        '200': { description: Liquidación completada (cantidad liquidada, ganadoras, total de premios) }
+        '400': { description: Ya existe un resultado para ese sorteo/fecha }
+
+  /api/reportes/resumen:
+    get:
+      tags: [Reportes]
+      summary: Resumen del día (ventas, premiado, balance), con alcance según el rol
+      security: [{ tenantAuth: [] }]
+      parameters: [{ name: fecha, in: query, schema: { type: string, format: date } }]
+      responses: { '200': { description: OK } }
+
+  /api/reportes/vendedores:
+    get:
+      tags: [Reportes]
+      summary: Desempeño por vendedor (solo admin_empresa/admin_sucursal)
+      security: [{ tenantAuth: [] }]
+      parameters: [{ name: fecha, in: query, schema: { type: string, format: date } }]
+      responses: { '200': { description: OK } }
+
+  /api/caja/cerrar:
+    post:
+      tags: [Caja]
+      summary: Cierra la caja del día de un vendedor
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: Cierre calculado y guardado } }
+
+  /api/caja/cierres:
+    get:
+      tags: [Caja]
+      summary: Lista cierres de caja (solo admin_empresa/admin_sucursal)
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+
+  /api/usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Lista usuarios del tenant (solo admin_empresa/admin_sucursal)
+      security: [{ tenantAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Usuarios]
+      summary: Crea un usuario dentro del tenant
+      security: [{ tenantAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CrearUsuarioRequest' } } }
+      responses: { '200': { description: Creado } }
+
+  /api/usuarios/{id}/estado:
+    put:
+      tags: [Usuarios]
+      summary: Activa/desactiva un usuario
+      security: [{ tenantAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [activo], properties: { activo: { type: boolean } } } } }
+      responses: { '200': { description: Actualizado } }
