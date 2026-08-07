@@ -459,9 +459,10 @@ function calcGranTotal() {
 }
 
 function renderRevisarModal() {
-  const ALIAS = { quiniela: 'QN', pale: 'PL', tripleta: 'TPL', superpale: 'SPL' };
+  const ALIAS = { quiniela: 'QUINIELA', pale: 'PALÉ', tripleta: 'TRIPLETA', superpale: 'SÚPER PALÉ' };
+  const COLORS = { quiniela: '#0984e3', pale: '#6c5ce7', tripleta: '#00b894', superpale: '#d63031' };
   let granTotal = 0;
-  let rowsHtml = '';
+  let cardsHtml = '';
 
   state.carrito.forEach((folder, fi) => {
     const isSuperPale = folder.combinaciones.some(c => c.tipo === 'superpale');
@@ -472,49 +473,43 @@ function renderRevisarModal() {
 
     folder.combinaciones.forEach((comb, ci) => {
       granTotal += comb.monto * mult;
-      rowsHtml += `
-        <tr style="border-bottom:1px solid #ddd;">
-          <td style="padding:6px 4px; font-size:12px;">${esc(descSorteos)}</td>
-          <td style="padding:4px;">
-            <div style="display:flex; align-items:center; gap:4px;">
-              <span style="font-size:11px; font-weight:bold; color:#fff; background:#0984e3; border-radius:3px; padding:2px 5px; white-space:nowrap;">${ALIAS[comb.tipo] || comb.tipo}</span>
-              <input type="text" class="edit-nums-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}" data-tipo="${comb.tipo}"
-                value="${comb.numeros.join('-')}"
-                style="width:80px; text-align:center; font-size:13px; font-weight:bold; font-family:monospace; border:1px solid #ccc; border-radius:4px; padding:3px 4px;"
-                maxlength="11" inputmode="numeric" placeholder="00">
+      const color = COLORS[comb.tipo] || '#333';
+      cardsHtml += `
+        <div style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:10px; padding:14px; margin-bottom:10px;">
+          <div style="font-size:13px; color:#6c757d; margin-bottom:8px; font-weight:600;">${esc(descSorteos)}</div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="font-size:14px; font-weight:800; color:#fff; background:${color}; border-radius:6px; padding:6px 12px; white-space:nowrap;">${ALIAS[comb.tipo] || comb.tipo}</span>
+            <input type="text" class="edit-nums-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}" data-tipo="${comb.tipo}"
+              value="${comb.numeros.join('-')}"
+              style="flex:1; min-width:90px; text-align:center; font-size:22px; font-weight:800; font-family:monospace; border:2px solid #dee2e6; border-radius:8px; padding:8px; color:#000;"
+              maxlength="11" inputmode="none" readonly placeholder="00">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:16px; font-weight:600; color:#495057;">$</span>
+              <input type="number" class="edit-monto-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
+                value="${comb.monto}" min="1" step="1"
+                style="width:80px; text-align:right; font-size:20px; font-weight:700; border:2px solid #dee2e6; border-radius:8px; padding:8px; color:#000;">
+              <button class="btn-del-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
+                style="background:#d63031; color:#fff; border:none; border-radius:8px; width:44px; height:44px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
             </div>
-          </td>
-          <td style="padding:4px;">
-            <input type="number" class="edit-monto-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
-              value="${comb.monto}" min="1" step="1"
-              style="width:70px; text-align:right; font-size:13px; border:1px solid #ccc; border-radius:4px; padding:3px 4px;">
-          </td>
-          <td style="padding:4px; text-align:center;">
-            <button class="btn-del-revisar" data-folder-idx="${fi}" data-comb-idx="${ci}"
-              style="background:#d63031; color:#fff; border:none; border-radius:4px; padding:3px 8px; font-size:12px; cursor:pointer;">✕</button>
-          </td>
-        </tr>
+          </div>
+        </div>
       `;
     });
   });
 
   return `
     <div class="pos-modal-overlay">
-      <div class="pos-modal" style="max-height:90vh; overflow-y:auto;">
-        <h3 style="margin:0 0 10px; text-align:center;">REVISAR JUGADAS</h3>
-        <table style="width:100%; border-collapse:collapse; font-size:12px; margin-bottom:10px;">
-          <thead>
-            <tr style="background:#f0f0f0; font-size:11px;">
-              <th style="padding:5px; text-align:left;">Sorteo</th>
-              <th style="padding:5px; text-align:left;">Jugada</th>
-              <th style="padding:5px; text-align:right;">Monto</th>
-              <th style="padding:5px;"></th>
-            </tr>
-          </thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-        <div id="revisar-total" style="font-size:16px; font-weight:bold; text-align:right; margin-bottom:12px;">
-          Total: ${fmtMoney(granTotal)}
+      <div class="pos-modal">
+        <div class="pos-modal-header">
+          <h3 style="font-size:22px;">REVISAR JUGADAS</h3>
+        </div>
+        <div class="pos-modal-list">
+          ${cardsHtml}
+        </div>
+        <div style="padding:0 20px 10px; flex-shrink:0;">
+          <div id="revisar-total" style="font-size:22px; font-weight:800; text-align:right; margin-bottom:14px; color:#000;">
+            Total: ${fmtMoney(granTotal)}
+          </div>
         </div>
         <div class="pos-modal-actions">
           <button id="btn-revisar-continuar" style="background:#0984e3; color:#fff;">Continuar →</button>
