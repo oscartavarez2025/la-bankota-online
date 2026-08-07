@@ -372,10 +372,12 @@ function renderLoteriasModal(sorteosFlat) {
   return `
     <div class="pos-modal-overlay">
       <div class="pos-modal">
-        <h3 style="margin:0 0 10px;">Seleccionar loterías</h3>
-        <label style="color:#d63031; font-weight:bold; margin-bottom:10px; display:block; font-size:14px; text-transform:uppercase;">
-          SUPER PALÉ <input type="checkbox" id="chk-sp-mode" ${state.sel.isSuperPaleMode ? 'checked' : ''} style="margin-left:8px; transform:scale(1.3);">
-        </label>
+        <div class="pos-modal-header">
+          <h3>Seleccionar loterías</h3>
+          <label style="color:#d63031; font-weight:bold; display:flex; align-items:center; gap:12px; font-size:17px; text-transform:uppercase;">
+            SUPER PALÉ <input type="checkbox" id="chk-sp-mode" ${state.sel.isSuperPaleMode ? 'checked' : ''} style="transform:scale(1.6); accent-color:#d63031;">
+          </label>
+        </div>
         <div class="pos-modal-list">
           ${sorteosFlat.map(s => {
             const paso = haPasadoSorteo(fechaSel, s.hora);
