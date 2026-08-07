@@ -533,25 +533,38 @@ function renderRevisarModal() {
   `;
 }
 
+function formatThousands(valStr) {
+  if (!valStr) return '';
+  const num = parseFloat(valStr);
+  if (isNaN(num)) return '';
+  return num.toLocaleString('en-US');
+}
+
 function updateCobroEfectivo(valStr) {
   const granTotal = calcGranTotal();
   const efectivo = parseFloat(valStr) || 0;
   const cambio = efectivo - granTotal;
   
   const inputEl = document.getElementById('f-efectivo');
-  if (inputEl) inputEl.value = valStr ? valStr : '';
+  if (inputEl) inputEl.value = valStr ? formatThousands(valStr) : '';
 
   const disp = document.getElementById('cambio-display');
   if (disp) {
     if (cambio >= 0) {
-      disp.style.color = '#00b894';
-      disp.style.background = '#e6f9f0';
-      disp.style.borderColor = '#00b894';
+      disp.style.color = '#ffffff';
+      disp.style.background = '#4169E1'; // Azul Royal
+      disp.style.borderColor = '#1d4ed8';
+      disp.style.fontSize = '24px';
+      disp.style.padding = '12px';
+      disp.style.boxShadow = '0 4px 10px rgba(65,105,225,0.3)';
       disp.textContent = `Cambio: ${fmtMoney(cambio)}`;
     } else {
       disp.style.color = '#d63031';
       disp.style.background = '#ffe5e5';
       disp.style.borderColor = '#d63031';
+      disp.style.fontSize = '18px';
+      disp.style.padding = '8px';
+      disp.style.boxShadow = 'none';
       disp.textContent = `Falta: ${fmtMoney(Math.abs(cambio))}`;
     }
   }
@@ -563,14 +576,14 @@ function renderCobroModal() {
   const efectivo = parseFloat(efVal) || 0;
   const cambio = efectivo - granTotal;
 
-  // Billetes sugeridos comunes superiores al total
-  const sugeridos = [granTotal, 50, 100, 200, 500, 1000].filter((v, i, a) => v >= granTotal && a.indexOf(v) === i).slice(0, 4);
+  // Billetes rápidos de acceso directo (50, 100, 200, 500, 1000, 2000)
+  const billetes = [50, 100, 200, 500, 1000, 2000];
 
   return `
     <div class="pos-modal-overlay">
-      <div class="pos-modal" style="max-width:400px; margin:0 auto; border-radius:12px;">
+      <div class="pos-modal" style="max-width:420px; margin:0 auto; border-radius:12px;">
         <div class="pos-modal-header" style="padding:10px 14px; text-align:center;">
-          <h3 style="font-size:18px; margin:0;">COBRO Y CAMBIO</h3>
+          <h3 style="font-size:20px; margin:0; font-weight:800;">COBRO Y CAMBIO</h3>
         </div>
         
         <div class="pos-modal-list" style="padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
@@ -579,22 +592,24 @@ function renderCobroModal() {
             Total a pagar: <b style="font-size:22px; color:#000; font-weight:800;">${fmtMoney(granTotal)}</b>
           </div>
 
-          <!-- Campo Efectivo con Teclado Propio (evita teclado del sistema) -->
+          <!-- Campo Efectivo separado por comas de miles -->
           <div>
-            <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; display:block; margin-bottom:2px; text-align:center;">Efectivo Recibido</label>
-            <div style="display:flex; align-items:center; background:#fff9c4; border:2px solid #f39c12; border-radius:8px; padding:0 10px; height:44px; box-shadow:0 0 0 2px #f39c12 inset;">
-              <span style="font-size:20px; font-weight:800; color:#000; margin-right:6px;">$</span>
-              <input type="text" id="f-efectivo" inputmode="none" readonly placeholder="0.00" value="${efVal ? efVal : ''}"
-                style="width:100%; border:none; outline:none; font-size:22px; font-weight:800; color:#000; background:transparent; text-align:right;">
+            <label style="font-size:13px; font-weight:800; color:#212529; text-transform:uppercase; display:block; margin-bottom:4px; text-align:center; letter-spacing:0.5px;">
+              EFECTIVO RECIBIDO
+            </label>
+            <div style="display:flex; align-items:center; background:#fff9c4; border:2px solid #f39c12; border-radius:8px; padding:0 12px; height:46px; box-shadow:0 0 0 2px #f39c12 inset;">
+              <span style="font-size:22px; font-weight:800; color:#000; margin-right:6px;">$</span>
+              <input type="text" id="f-efectivo" inputmode="none" readonly placeholder="0" value="${efVal ? formatThousands(efVal) : ''}"
+                style="width:100%; border:none; outline:none; font-size:24px; font-weight:800; color:#000; background:transparent; text-align:right;">
             </div>
           </div>
 
-          <!-- Billetes Rápidos -->
-          <div style="display:flex; gap:6px;">
-            ${sugeridos.map(v => `
+          <!-- Billetes Rápidos (2 Filas de 3 Botones) -->
+          <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;">
+            ${billetes.map(v => `
               <button class="btn-quick-cash" data-cash="${v}"
-                style="flex:1; background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-weight:800; font-size:13px; padding:6px 0; border-radius:6px; cursor:pointer;">
-                ${v === granTotal ? 'Exacto' : '$' + v}
+                style="background:#e3f2fd; border:1.5px solid #64b5f6; color:#0d47a1; font-weight:800; font-size:15px; padding:8px 0; border-radius:6px; cursor:pointer;">
+                $${formatThousands(String(v))}
               </button>
             `).join('')}
           </div>
@@ -607,8 +622,12 @@ function renderCobroModal() {
             <button class="btn-cobro-key" data-key="del" style="height:40px; font-size:16px; font-weight:800; background:#e2e4e9; border:1px solid #c0c0c0; border-radius:6px; cursor:pointer;">⌫</button>
           </div>
 
-          <!-- Resultado del Cambio -->
-          <div id="cambio-display" style="font-size:18px; text-align:center; font-weight:800; padding:6px; border-radius:8px; border:1px solid ${cambio >= 0 ? '#00b894' : '#d63031'}; background:${cambio >= 0 ? '#e6f9f0' : '#ffe5e5'}; color:${cambio >= 0 ? '#00b894' : '#d63031'};">
+          <!-- Resultado del Cambio (Doble de grande y en Azul Royal) -->
+          <div id="cambio-display" style="text-align:center; font-weight:900; border-radius:10px; transition:all 0.2s; ${
+            cambio >= 0 
+              ? 'font-size:24px; padding:12px; background:#4169E1; color:#ffffff; border:2px solid #1d4ed8; box-shadow:0 4px 10px rgba(65,105,225,0.3);' 
+              : 'font-size:18px; padding:8px; background:#ffe5e5; color:#d63031; border:1.5px solid #d63031;'
+          }">
             ${cambio >= 0 ? `Cambio: ${fmtMoney(cambio)}` : `Falta: ${fmtMoney(Math.abs(cambio))}`}
           </div>
         </div>
