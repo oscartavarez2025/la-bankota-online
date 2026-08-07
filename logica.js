@@ -17,7 +17,8 @@ function validarNumeros(tipo_jugada, numeros) {
   for (const n of numeros) {
     if (!esNumeroValido(n)) return `Número inválido: "${n}". Debe ser 00-99 (dos dígitos)`;
   }
-  if (new Set(numeros).size !== numeros.length) {
+  // Super Palé permite el mismo número en ambas posiciones (apuesta en 2 loterías distintas)
+  if (new Set(numeros).size !== numeros.length && tipo_jugada !== 'superpale') {
     return 'No se pueden repetir números en la misma jugada';
   }
   return null;

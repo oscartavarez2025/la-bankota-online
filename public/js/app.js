@@ -912,9 +912,18 @@ function guardarJugada(doRender = true) {
       if (tripletas.length === 0) errorCombinaciones = "Se requieren al menos 3 números para Tripleta";
       tripletas.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
     } else if (tipo === 'superpale') {
-      if (sorteosIds.length < 2) errorCombinaciones = "Se requieren al menos 2 sorteos para Súper Palé";
-      else if (pales.length === 0) errorCombinaciones = "Se requieren al menos 2 números para Súper Palé";
-      else pales.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
+      if (sorteosIds.length < 2) { errorCombinaciones = "Selecciona al menos 2 sorteos para Súper Palé"; return; }
+      if (numeros.length === 0) { errorCombinaciones = "Ingresa al menos 1 número para Súper Palé"; return; }
+      // Super Palé: cada número apostado forma un par [n, n] en 2 loterías distintas
+      // (mismo número en sorteo A y sorteo B). Si hay 2+ números, también se generan
+      // pares cruzados distintos (n1 vs n2).
+      numeros.forEach(n => combinaciones.push({ tipo, numeros: [n, n], monto: Number(monto) }));
+      // Pares cruzados solo si hay 2+ números distintos
+      if (numeros.length >= 2) {
+        getCombinations(numeros, 2).forEach(pair => {
+          combinaciones.push({ tipo, numeros: pair, monto: Number(monto) });
+        });
+      }
     }
   });
 
