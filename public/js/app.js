@@ -12,7 +12,7 @@ const state = {
   sucursales: [],
   loginSucursales: [], // Sucursales para el login
   loading: false,
-  sel: { sorteosIds: [], tipos: ['quiniela'], numeros: [], numTemp: '', monto: '', isSuperPaleMode: false },
+  sel: { sorteosIds: [], tipos: ['quiniela'], numeros: [], numTemp: '', monto: '', isSuperPaleMode: false, efectivo: '' },
   carrito: [], // array de { id: timestamp, sorteosIds: [...], combinaciones: [...] }
   ui: { loteriasModalOpen: false, carritoModalOpen: false, revisarModalOpen: false, cobroModalOpen: false, autoSaved: false, focusedField: 'numeros' },
 };
@@ -533,34 +533,88 @@ function renderRevisarModal() {
   `;
 }
 
+function updateCobroEfectivo(valStr) {
+  const granTotal = calcGranTotal();
+  const efectivo = parseFloat(valStr) || 0;
+  const cambio = efectivo - granTotal;
+  
+  const inputEl = document.getElementById('f-efectivo');
+  if (inputEl) inputEl.value = valStr ? valStr : '';
+
+  const disp = document.getElementById('cambio-display');
+  if (disp) {
+    if (cambio >= 0) {
+      disp.style.color = '#00b894';
+      disp.style.background = '#e6f9f0';
+      disp.style.borderColor = '#00b894';
+      disp.textContent = `Cambio: ${fmtMoney(cambio)}`;
+    } else {
+      disp.style.color = '#d63031';
+      disp.style.background = '#ffe5e5';
+      disp.style.borderColor = '#d63031';
+      disp.textContent = `Falta: ${fmtMoney(Math.abs(cambio))}`;
+    }
+  }
+}
+
 function renderCobroModal() {
   const granTotal = calcGranTotal();
+  const efVal = state.sel.efectivo || '';
+  const efectivo = parseFloat(efVal) || 0;
+  const cambio = efectivo - granTotal;
+
+  // Billetes sugeridos comunes superiores al total
+  const sugeridos = [granTotal, 50, 100, 200, 500, 1000].filter((v, i, a) => v >= granTotal && a.indexOf(v) === i).slice(0, 4);
+
   return `
     <div class="pos-modal-overlay">
-      <div class="pos-modal">
-        <div class="pos-modal-header" style="padding:10px; text-align:center;">
+      <div class="pos-modal" style="max-width:400px; margin:0 auto; border-radius:12px;">
+        <div class="pos-modal-header" style="padding:10px 14px; text-align:center;">
           <h3 style="font-size:18px; margin:0;">COBRO Y CAMBIO</h3>
         </div>
-        <div class="pos-modal-list" style="padding:10px 14px; display:flex; flex-direction:column; justify-content:flex-start; gap:8px;">
+        
+        <div class="pos-modal-list" style="padding:10px 14px; display:flex; flex-direction:column; gap:8px;">
+          <!-- Total a Pagar -->
           <div style="font-size:15px; text-align:center; color:#495057;">
             Total a pagar: <b style="font-size:22px; color:#000; font-weight:800;">${fmtMoney(granTotal)}</b>
           </div>
-          
+
+          <!-- Campo Efectivo con Teclado Propio (evita teclado del sistema) -->
           <div>
-            <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; display:block; margin-bottom:2px; text-align:center;">Efectivo recibido del cliente</label>
+            <label style="font-size:11px; font-weight:700; color:#6c757d; text-transform:uppercase; display:block; margin-bottom:2px; text-align:center;">Efectivo Recibido</label>
             <div style="display:flex; align-items:center; background:#fff9c4; border:2px solid #f39c12; border-radius:8px; padding:0 10px; height:44px; box-shadow:0 0 0 2px #f39c12 inset;">
               <span style="font-size:20px; font-weight:800; color:#000; margin-right:6px;">$</span>
-              <input type="number" id="f-efectivo" inputmode="decimal" placeholder="0.00" 
-                style="width:100%; border:none; outline:none; font-size:22px; font-weight:800; color:#000; background:transparent; text-align:right;" autofocus>
+              <input type="text" id="f-efectivo" inputmode="none" readonly placeholder="0.00" value="${efVal ? efVal : ''}"
+                style="width:100%; border:none; outline:none; font-size:22px; font-weight:800; color:#000; background:transparent; text-align:right;">
             </div>
           </div>
-          
-          <div id="cambio-display" style="font-size:18px; text-align:center; font-weight:800; color:#d63031; padding:8px; background:#f8f9fa; border-radius:8px; border:1px solid #dee2e6;">
-            Falta: ${fmtMoney(granTotal)}
+
+          <!-- Billetes Rápidos -->
+          <div style="display:flex; gap:6px;">
+            ${sugeridos.map(v => `
+              <button class="btn-quick-cash" data-cash="${v}"
+                style="flex:1; background:#e3f2fd; border:1px solid #90caf9; color:#0d47a1; font-weight:800; font-size:13px; padding:6px 0; border-radius:6px; cursor:pointer;">
+                ${v === granTotal ? 'Exacto' : '$' + v}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- Teclado Numérico Integrado Compacto -->
+          <div class="cobro-keypad" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px;">
+            ${[1,2,3,4,5,6,7,8,9].map(n => `<button class="btn-cobro-key" data-key="${n}" style="height:40px; font-size:18px; font-weight:800; background:#e2e4e9; border:1px solid #c0c0c0; border-radius:6px; cursor:pointer;">${n}</button>`).join('')}
+            <button class="btn-cobro-key" data-key="clear" style="height:40px; font-size:16px; font-weight:800; background:#e2e4e9; border:1px solid #c0c0c0; border-radius:6px; cursor:pointer;">C</button>
+            <button class="btn-cobro-key" data-key="0" style="height:40px; font-size:18px; font-weight:800; background:#e2e4e9; border:1px solid #c0c0c0; border-radius:6px; cursor:pointer;">0</button>
+            <button class="btn-cobro-key" data-key="del" style="height:40px; font-size:16px; font-weight:800; background:#e2e4e9; border:1px solid #c0c0c0; border-radius:6px; cursor:pointer;">⌫</button>
+          </div>
+
+          <!-- Resultado del Cambio -->
+          <div id="cambio-display" style="font-size:18px; text-align:center; font-weight:800; padding:6px; border-radius:8px; border:1px solid ${cambio >= 0 ? '#00b894' : '#d63031'}; background:${cambio >= 0 ? '#e6f9f0' : '#ffe5e5'}; color:${cambio >= 0 ? '#00b894' : '#d63031'};">
+            ${cambio >= 0 ? `Cambio: ${fmtMoney(cambio)}` : `Falta: ${fmtMoney(Math.abs(cambio))}`}
           </div>
         </div>
         
-        <div class="pos-modal-actions compact-actions" style="padding:10px 14px;">
+        <!-- Botones de Acción (Inamovibles) -->
+        <div class="pos-modal-actions compact-actions" style="padding:10px 14px; border-top:1px solid #e0e0e0;">
           <button id="btn-cancelar-imprimir" style="background:#d63031; color:#fff;">Cancelar</button>
           <button id="btn-confirmar-imprimir" style="background:#0984e3; color:#fff;">Imprimir Tickets</button>
         </div>
@@ -781,7 +835,30 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('#btn-revisar-continuar')) {
     state.ui.revisarModalOpen = false;
     state.ui.cobroModalOpen = true;
+    state.sel.efectivo = '';
     render(); return;
+  }
+  const btnQuickCash = e.target.closest('.btn-quick-cash');
+  if (btnQuickCash) {
+    const cashVal = btnQuickCash.dataset.cash;
+    state.sel.efectivo = String(cashVal);
+    updateCobroEfectivo(state.sel.efectivo);
+    return;
+  }
+  const btnCobroKey = e.target.closest('.btn-cobro-key');
+  if (btnCobroKey) {
+    const k = btnCobroKey.dataset.key;
+    let curr = state.sel.efectivo || '';
+    if (k === 'del') {
+      curr = curr.slice(0, -1);
+    } else if (k === 'clear') {
+      curr = '';
+    } else {
+      if (curr.length < 7) curr += k;
+    }
+    state.sel.efectivo = curr;
+    updateCobroEfectivo(curr);
+    return;
   }
   const btnDelRev = e.target.closest('.btn-del-revisar');
   if (btnDelRev) {
