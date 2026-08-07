@@ -98,22 +98,7 @@ function render() {
 }
 
 function shell(mainHtml) {
-  const u = state.user;
-  const esAdmin = u.rol === 'admin_empresa' || u.rol === 'admin_sucursal';
-  return `
-    <div class="topbar">
-      <div class="brand"><span class="dot"></span>LA BANKOTA</div>
-      <div class="who"><b>${esc(u.nombre)}</b>${rolLabel(u.rol)}</div>
-    </div>
-    <div class="main">${mainHtml}</div>
-    <div class="tabbar">
-      <button data-tab="vender" class="${state.screen === 'vender' ? 'active' : ''}"><span class="icon">✎</span>Vender</button>
-      <button data-tab="historial" class="${state.screen === 'historial' ? 'active' : ''}"><span class="icon">≡</span>Historial</button>
-      <button data-tab="caja" class="${state.screen === 'caja' ? 'active' : ''}"><span class="icon">$</span>Caja</button>
-      ${esAdmin ? `<button data-tab="resultados" class="${state.screen === 'resultados' ? 'active' : ''}"><span class="icon">🏆</span>Resultados</button>` : ''}
-      <button data-tab="salir"><span class="icon">⏻</span>Salir</button>
-    </div>
-  `;
+  return `<div class="main-fullscreen">${mainHtml}</div>`;
 }
 
 function rolLabel(rol) {
@@ -121,10 +106,61 @@ function rolLabel(rol) {
 }
 function esAdminEmpresa() { return state.user?.rol === 'admin_empresa'; }
 
+function renderMenuDropdown() {
+  const u = state.user;
+  const esAdmin = u.rol === 'admin_empresa' || u.rol === 'admin_sucursal';
+  return `
+    <div class="menu-dropdown" id="menu-dropdown">
+      <div class="menu-user-info">
+        <span class="menu-dot"></span>
+        <span><b>${esc(u.nombre)}</b> · ${rolLabel(u.rol)}</span>
+      </div>
+      <button class="menu-item ${state.screen === 'vender' ? 'active' : ''}" data-tab="vender">✎ Vender</button>
+      <button class="menu-item ${state.screen === 'historial' ? 'active' : ''}" data-tab="historial">≡ Historial</button>
+      <button class="menu-item ${state.screen === 'caja' ? 'active' : ''}" data-tab="caja">$ Caja</button>
+      ${esAdmin ? `<button class="menu-item ${state.screen === 'resultados' ? 'active' : ''}" data-tab="resultados">🏆 Resultados</button>` : ''}
+      <button class="menu-item menu-item--danger" data-tab="salir">⏻ Salir</button>
+    </div>
+  `;
+}
+
 function wireTabbar() {
-  document.querySelectorAll('.tabbar [data-tab]').forEach(btn => {
+  // Wire floating menu button
+  const menuBtn = document.getElementById('btn-menu-float');
+  if (menuBtn) {
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.ui.menuOpen = !state.ui.menuOpen;
+      const dd = document.getElementById('menu-dropdown');
+      if (state.ui.menuOpen) {
+        if (!dd) {
+          const el = document.createElement('div');
+          el.innerHTML = renderMenuDropdown();
+          menuBtn.parentElement.appendChild(el.firstElementChild);
+          wireMenuItems();
+        }
+      } else {
+        if (dd) dd.remove();
+      }
+    });
+  }
+  // Close menu on outside click
+  document.addEventListener('click', (e) => {
+    if (state.ui.menuOpen && !e.target.closest('#btn-menu-float') && !e.target.closest('#menu-dropdown')) {
+      state.ui.menuOpen = false;
+      const dd = document.getElementById('menu-dropdown');
+      if (dd) dd.remove();
+    }
+  }, { once: false });
+}
+
+function wireMenuItems() {
+  document.querySelectorAll('#menu-dropdown [data-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
+      state.ui.menuOpen = false;
+      const dd = document.getElementById('menu-dropdown');
+      if (dd) dd.remove();
       if (tab === 'salir') return logout();
       state.screen = tab;
       render();
@@ -229,17 +265,20 @@ function renderVender() {
         <div class="selected-loterias-display" id="display-sorteos">
           ${sorteosNames || 'Ninguna lotería seleccionada'}
         </div>
-        <div class="pos-date-picker">
+        <div class="pos-date-mini">
           <input type="date" id="f-fecha" value="${state.sel.fecha || hoy()}">
+        </div>
+        <div class="pos-menu-wrap">
+          <button id="btn-menu-float" class="pos-menu-btn" title="Menú">☰</button>
         </div>
       </div>
 
       <div class="pos-actions">
-        <button id="btn-combinar" class="pos-btn" style="background:#ffeaa7;">COMBINAR</button>
+        <button id="btn-combinar" class="pos-btn" style="background:#ffeaa7; font-size:22px;" title="Combinar">🌀</button>
         <button id="btn-invertir" class="pos-btn" style="background:#e0e0e0;">↺</button>
-        <button id="btn-copiar" class="pos-btn" style="background:#e0e0e0;">COPIAR</button>
-        <button id="btn-limpiar" class="pos-btn" style="background:#e0e0e0; font-size:18px;">🗑️</button>
-        <button id="btn-open-cart" class="pos-btn" style="background:#e0e0e0; font-size:18px; position:relative;">
+        <button id="btn-copiar" class="pos-btn" style="background:#e0e0e0; font-size:20px;" title="Copiar">📋</button>
+        <button id="btn-limpiar" class="pos-btn" style="background:#ffcccc; font-size:20px; color:#c0392b;">🗑</button>
+        <button id="btn-open-cart" class="pos-btn" style="background:#d4edff; font-size:20px; color:#0984e3; position:relative;">
           🛒
           ${state.carrito.length > 0 ? `<span class="cart-badge-small">${state.carrito.length}</span>` : ''}
         </button>

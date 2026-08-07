@@ -51,8 +51,15 @@ button { font-family: inherit; cursor: pointer; }
 input, select { font-family: inherit; }
 ::selection { background: var(--gold); color: #1a1200; }
 
-/* ---------- Shell ---------- */
+/* ---------- Shell sin topbar ni tabbar ---------- */
 #app { min-height: 100vh; display: flex; flex-direction: column; }
+
+.main-fullscreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -80,24 +87,39 @@ input, select { font-family: inherit; }
 }
 .btn-logout:active { border-color: var(--loss); color: var(--loss); }
 
-.main { flex: 1; padding: 14px 14px calc(90px + var(--safe-bottom)); max-width: 640px; width: 100%; margin: 0 auto; }
+.main { flex: 1; padding: 14px 14px 20px; max-width: 640px; width: 100%; margin: 0 auto; }
 
-/* ---------- Bottom tab nav (móvil primero) ---------- */
-.tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  display: flex;
-  background: linear-gradient(0deg, var(--surface-2), var(--surface));
-  border-top: 1px solid var(--border);
-  padding: 6px 4px calc(6px + var(--safe-bottom));
+/* ---------- Floating hamburger menu ---------- */
+.pos-menu-wrap { position: relative; flex-shrink: 0; }
+.pos-menu-btn {
+  background: #333; border: none; border-radius: 6px; color: #fff;
+  width: 38px; height: 38px; font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
 }
-.tabbar button {
-  flex: 1; background: none; border: none; color: var(--text-muted);
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 6px 2px; min-height: var(--tap-min); border-radius: 10px;
-  font-size: 11px; font-weight: 600;
+.pos-menu-btn:active { opacity: 0.8; }
+
+.menu-dropdown {
+  position: absolute; top: 44px; right: 0; z-index: 200;
+  background: #1a3325; border: 1px solid #2b4a37; border-radius: 10px;
+  min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  overflow: hidden;
 }
-.tabbar button .icon { font-size: 20px; line-height: 1; }
-.tabbar button.active { color: var(--gold); background: rgba(229,177,62,0.08); }
+.menu-user-info {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; font-size: 12px; color: #93a897;
+  border-bottom: 1px solid #2b4a37;
+}
+.menu-dot { width: 8px; height: 8px; border-radius: 50%; background: #57c97a; box-shadow: 0 0 6px #57c97a; flex-shrink: 0; }
+.menu-item {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: #f1ede1; padding: 12px 16px; font-size: 14px; font-weight: 600;
+  cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.menu-item:hover { background: rgba(229,177,62,0.1); color: #e5b13e; }
+.menu-item.active { color: #e5b13e; background: rgba(229,177,62,0.08); }
+.menu-item--danger { color: #e1614a; }
+.menu-item--danger:hover { background: rgba(225,97,74,0.1); color: #e1614a; }
 
 /* ---------- Cards / secciones ---------- */
 .card {
@@ -165,9 +187,14 @@ input, select { font-family: inherit; }
   flex: 1; background: #fff; border: 1px solid #000; padding: 4px 8px; font-size: 11px;
   overflow-y: auto; line-height: 1.3; font-weight: bold; border-radius: 2px;
 }
-.pos-date-picker input {
-  border: 1px solid #000; padding: 4px; border-radius: 4px; font-size: 12px; height: 100%; width: 110px; font-weight: bold;
+.pos-date-mini { flex-shrink: 0; }
+.pos-date-mini input {
+  border: none; background: transparent; padding: 2px 4px;
+  border-radius: 4px; font-size: 11px; font-weight: bold;
+  width: 90px; color: #333; cursor: pointer;
 }
+.pos-date-mini input::-webkit-calendar-picker-indicator { opacity: 0.6; }
+
 
 .pos-actions { display: flex; gap: 8px; margin-bottom: 12px; }
 .pos-btn {
