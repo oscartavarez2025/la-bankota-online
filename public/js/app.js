@@ -353,10 +353,16 @@ function renderVender() {
           <input type="date" id="f-fecha" value="${state.sel.fecha || hoy()}">
         </div>
         <button id="btn-combinar" class="icon-action-btn" title="Modo Combinar" 
-          style="${state.sel.isCombinarMode ? 'background:#e5b13e; color:#1a1200; border:1.5px solid #b9872a;' : 'background:#f1f3f5; color:#333; border:1px solid #ced4da;'} padding:4px 8px; border-radius:6px; font-size:12px; font-weight:800; display:flex; align-items:center; gap:2px; min-height:30px;">
-          🔀 COMB
+          style="${state.sel.isCombinarMode ? 'background:#fff3cd; border:1.5px solid #e5b13e; border-radius:8px;' : 'border:none;'}">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${state.sel.isCombinarMode ? '#b9872a' : '#2d3436'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="4" y1="20" x2="21" y2="3"></line>
+            <polyline points="21 16 21 21 16 21"></polyline>
+            <line x1="15" y1="15" x2="21" y2="21"></line>
+            <line x1="4" y1="4" x2="9" y2="9"></line>
+          </svg>
         </button>
-        <button id="btn-invertir" class="icon-action-btn" title="Invertir"><span style="display:inline-block; transform: rotate(180deg);">R</span></button>
+        <button id="btn-invertir" class="icon-action-btn" title="Invertir"><span style="display:inline-block; transform: rotate(180deg); font-weight:bold; font-size:24px;">R</span></button>
         <button id="btn-copiar" class="icon-action-btn" title="Copiar">📋</button>
         <button id="btn-limpiar" class="icon-action-btn" title="Limpiar">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -388,13 +394,20 @@ function renderVender() {
       </div>
 
       <div class="pos-bottom">
-        <button class="pos-btn" id="btn-guardar" style="background:#a2d2ff; margin-bottom:0; max-width:100px;">GUARDAR</button>
+        <button class="pos-btn" id="btn-guardar" style="background:#4169E1; color:#ffffff; font-weight:800; font-size:16px; letter-spacing:1.1px; border-radius:8px; border:none; height:50px; flex:1; box-shadow:0 2px 0 #1d4ed8; margin-bottom:0; cursor:pointer;">GUARDAR</button>
         <div class="monto-wrap ${state.ui.focusedField === 'monto' ? 'focused-field' : ''}" id="monto-wrap">
           <span class="currency">$</span>
           <input type="text" id="f-monto" inputmode="none" readonly placeholder="0.00" value="${esc(state.sel.monto)}">
         </div>
-        <button class="icon-print-btn" id="btn-print">
-           🖨️
+        <button class="icon-print-btn" id="btn-print" title="Imprimir">
+          <svg width="38" height="38" viewBox="0 0 48 48" fill="none">
+            <path d="M12 18H36V8C36 6.89543 35.1046 6 34 6H14C12.8954 6 12 6.89543 12 8V18Z" fill="#F1F5F9" stroke="#334155" stroke-width="2"/>
+            <path d="M10 16H38C40.2091 16 42 17.7909 42 20V32C42 34.2091 40.2091 36 38 36H36V40C36 41.1046 35.1046 42 34 42H14C12.8954 42 12 41.1046 12 40V36H10C7.79086 36 6 34.2091 6 32V20C6 17.7909 7.79086 16 10 16Z" fill="#E11D48" stroke="#9F1239" stroke-width="2"/>
+            <rect x="14" y="28" width="20" height="14" rx="2" fill="#FFFFFF" stroke="#334155" stroke-width="2"/>
+            <line x1="18" y1="33" x2="30" y2="33" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
+            <line x1="18" y1="37" x2="26" y2="37" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="36" cy="22" r="2.5" fill="#22C55E"/>
+          </svg>
         </button>
       </div>
       <div id="vender-error"></div>
