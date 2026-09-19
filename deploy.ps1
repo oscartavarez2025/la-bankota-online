@@ -1,26 +1,34 @@
-# deploy.ps1 — La Bankota: git add + commit + push automatico
-# Atajo de teclado: Ctrl+Alt+K
+﻿# deploy.ps1 — La Bankota: git add + commit + push automatico
 $ErrorActionPreference = "Stop"
-$dir = "A:\LA_BANKOTA\Bancas-test\8\bankota-v2\backend-postgres"
+$dir = $PSScriptRoot
 Set-Location $dir
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
 $msg = "deploy: $timestamp"
 
 try {
+    Write-Host "1. Agregando archivos modificados (git add .)..." -ForegroundColor Cyan
     git add .
     $status = git status --porcelain
     if ($status) {
-        git commit -m $msg
+        Write-Host "2. Creando commit: $msg..." -ForegroundColor Cyan
+        git commit -m "$msg"
+        Write-Host "3. Subiendo a GitHub (git push origin main)..." -ForegroundColor Cyan
         git push origin main
-        $body = "✅ Subido a GitHub correctamente`n$timestamp"
+        $body = "[OK] Subido a GitHub correctamente`n$timestamp"
+        Write-Host "`n$body" -ForegroundColor Green
     } else {
-        $body = "ℹ️ Sin cambios que subir."
+        $body = "[INFO] Sin cambios pendientes que subir."
+        Write-Host "`n$body" -ForegroundColor Yellow
     }
 } catch {
-    $body = "❌ Error al subir: $_"
+    $body = "[ERROR] Error al subir: $_"
+    Write-Host "`n$body" -ForegroundColor Red
 }
 
-# Notificacion de escritorio
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.MessageBox]::Show($body, "La Bankota Deploy", 0, 64)
+try {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show($body, "La Bankota Deploy", 0, 64)
+} catch {
+    # Si falla UI, no bloquear
+}

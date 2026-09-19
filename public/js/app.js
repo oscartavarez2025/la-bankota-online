@@ -12,7 +12,7 @@ const state = {
   sucursales: [],
   loginSucursales: [], // Sucursales para el login
   loading: false,
-  sel: { sorteosIds: [], tipos: ['quiniela'], numeros: [], numTemp: '', monto: '', isSuperPaleMode: false, efectivo: '' },
+  sel: { sorteosIds: [], tipos: ['quiniela'], numeros: [], numTemp: '', monto: '', isSuperPaleMode: false, isCombinarMode: false, efectivo: '' },
   carrito: [], // array de { id: timestamp, sorteosIds: [...], combinaciones: [...] }
   ui: { loteriasModalOpen: false, carritoModalOpen: false, revisarModalOpen: false, cobroModalOpen: false, autoSaved: false, focusedField: 'numeros' },
 };
@@ -248,13 +248,88 @@ async function loadSucursales() {
 
 function cantidadEsperada(tipo) { return { quiniela: 1, pale: 2, tripleta: 3 }[tipo]; }
 
+function formatDisplayNumbers() {
+  const arr = [...state.sel.numeros];
+  if (state.sel.numTemp) arr.push(state.sel.numTemp);
+  if (arr.length === 0) return '<span style="color:#adb5bd; font-weight:normal; font-size:20px;">00</span>';
+
+  const { tipos, isCombinarMode } = state.sel;
+  const isSinglePale = tipos.length === 1 && tipos[0] === 'pale';
+  const isSingleTripleta = tipos.length === 1 && tipos[0] === 'tripleta';
+  const isSuperPale = tipos.includes('superpale');
+
+  // Si está en Super Pale
+  if (isSuperPale) {
+    const base = arr.join(' - ');
+    const badge = `<div style="font-size:12px; font-weight:700; color:#d63031; margin-top:4px;">⭐ SÚPER PALÉ (2 números cruzados)</div>`;
+    return `<div style="width:100%;">${base}${badge}</div>`;
+  }
+
+  // Si está en modo COMBINAR O tiene varios tipos seleccionados (ej: QN + PL)
+  if (isCombinarMode || tipos.length > 1) {
+    const base = arr.join(' - ');
+    const totalNums = state.sel.numeros.length;
+    let badge = '';
+    if (totalNums >= 2) {
+      const palesCount = (totalNums * (totalNums - 1)) / 2;
+      const tripletsCount = (totalNums * (totalNums - 1) * (totalNums - 2)) / 6;
+      const infoParts = [];
+      if (tipos.includes('quiniela')) infoParts.push(`${totalNums} QN`);
+      if (tipos.includes('pale')) infoParts.push(`${palesCount} PL`);
+      if (tipos.includes('tripleta') && totalNums >= 3) infoParts.push(`${tripletsCount} TPL`);
+      if (infoParts.length) {
+        badge = `<div style="font-size:12px; font-weight:700; color:#d63031; margin-top:4px;">🔀 COMBINADO: ${infoParts.join(' + ')}</div>`;
+      }
+    } else {
+      badge = `<div style="font-size:12px; font-weight:700; color:#b9872a; margin-top:4px;">🔀 Modo Combinar Activo</div>`;
+    }
+    return `<div style="width:100%;">${base}${badge}</div>`;
+  }
+
+  // Si está SOLO PALÉ en modo directo
+  if (isSinglePale) {
+    const pairs = [];
+    for (let i = 0; i < arr.length; i += 2) {
+      if (i + 1 < arr.length) {
+        pairs.push(`${arr[i]}-${arr[i+1]}`);
+      } else {
+        pairs.push(`${arr[i]}`);
+      }
+    }
+    const countPales = Math.floor(state.sel.numeros.length / 2);
+    const incomplete = state.sel.numeros.length % 2 !== 0;
+    let subInfo = '';
+    if (countPales > 0) {
+      subInfo = `<div style="font-size:12px; font-weight:700; color:#0984e3; margin-top:4px;">${countPales} Palé(s) directo(s)${incomplete ? ' (falta 1 número)' : ''}</div>`;
+    }
+    return `<div style="width:100%;">${pairs.join(' &nbsp;|&nbsp; ')}${subInfo}</div>`;
+  }
+
+  // Si está SOLO TRIPLETA en modo directo
+  if (isSingleTripleta) {
+    const triplets = [];
+    for (let i = 0; i < arr.length; i += 3) {
+      const slice = arr.slice(i, i + 3);
+      triplets.push(slice.join('-'));
+    }
+    const countTriplets = Math.floor(state.sel.numeros.length / 3);
+    const remainder = state.sel.numeros.length % 3;
+    let subInfo = '';
+    if (countTriplets > 0) {
+      subInfo = `<div style="font-size:12px; font-weight:700; color:#00b894; margin-top:4px;">${countTriplets} Tripleta(s) directa(s)${remainder > 0 ? ` (faltan ${3 - remainder} números)` : ''}</div>`;
+    }
+    return `<div style="width:100%;">${triplets.join(' &nbsp;|&nbsp; ')}${subInfo}</div>`;
+  }
+
+  // Si está SOLO QUINIELA u otro
+  const countQn = state.sel.numeros.length;
+  let subInfo = countQn > 0 ? `<div style="font-size:12px; font-weight:700; color:#495057; margin-top:4px;">${countQn} Quiniela(s) directa(s)</div>` : '';
+  return `<div style="width:100%;">${arr.join(' - ')}${subInfo}</div>`;
+}
+
 function renderVender() {
   const sorteosFlat = [];
   state.loterias.forEach(l => (l.sorteos || []).forEach(s => sorteosFlat.push({ ...s, loteriaNombre: l.nombre })));
-
-  const arr = [...state.sel.numeros];
-  if (state.sel.numTemp) arr.push(state.sel.numTemp);
-  const numStr = arr.length ? arr.join('-') : '';
 
   const selectedSorteos = sorteosFlat.filter(s => state.sel.sorteosIds.includes(s.id));
   const sorteosNames = selectedSorteos.map(s => `• ${esc(s.loteriaNombre)} | ${s.hora}`).join('<br>');
@@ -273,10 +348,14 @@ function renderVender() {
         </div>
       </div>
 
-      <div class="pos-actions" style="background: transparent; border: none;">
+      <div class="pos-actions" style="background: transparent; border: none; align-items:center;">
         <div class="pos-date-mini">
           <input type="date" id="f-fecha" value="${state.sel.fecha || hoy()}">
         </div>
+        <button id="btn-combinar" class="icon-action-btn" title="Modo Combinar" 
+          style="${state.sel.isCombinarMode ? 'background:#e5b13e; color:#1a1200; border:1.5px solid #b9872a;' : 'background:#f1f3f5; color:#333; border:1px solid #ced4da;'} padding:4px 8px; border-radius:6px; font-size:12px; font-weight:800; display:flex; align-items:center; gap:2px; min-height:30px;">
+          🔀 COMB
+        </button>
         <button id="btn-invertir" class="icon-action-btn" title="Invertir"><span style="display:inline-block; transform: rotate(180deg);">R</span></button>
         <button id="btn-copiar" class="icon-action-btn" title="Copiar">📋</button>
         <button id="btn-limpiar" class="icon-action-btn" title="Limpiar">
@@ -298,7 +377,7 @@ function renderVender() {
       </div>
 
       <div class="pos-display ${state.ui.focusedField === 'numeros' ? 'focused-field' : ''}" id="pos-display">
-        ${numStr}
+        ${formatDisplayNumbers()}
       </div>
 
       <div class="pos-keypad" id="pos-keypad">
@@ -753,6 +832,13 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  // Modo Combinar
+  if (e.target.closest('#btn-combinar')) {
+    state.sel.isCombinarMode = !state.sel.isCombinarMode;
+    render();
+    return;
+  }
+
   // Invertir números
   if (e.target.closest('#btn-invertir')) {
     if (state.sel.numeros.length === 0) return;
@@ -953,7 +1039,7 @@ document.addEventListener('input', (e) => {
 
     // Validar: todos los grupos deben tener exactamente 2 dígitos
     const complete = groups.filter(g => g.length === 2);
-    const allValid = complete.length === groups.length && groups.length > 0;
+    const allValid = complete.length === groups.length && groups.length === maxSegs;
 
     if (allValid && state.carrito[fi] && state.carrito[fi].combinaciones[ci]) {
       state.carrito[fi].combinaciones[ci].numeros = complete;
@@ -1010,41 +1096,82 @@ function getCombinations(arr, size) {
 function guardarJugada(doRender = true) {
   const errBox = document.getElementById('vender-error');
   errBox.innerHTML = '';
-  const { sorteosIds, tipos, numeros, monto } = state.sel;
+  const { sorteosIds, tipos, numeros, monto, isCombinarMode } = state.sel;
   
   if (sorteosIds.length === 0) return errBox.innerHTML = `<div class="error-box">Selecciona al menos un sorteo.</div>`;
   if (tipos.length === 0) return errBox.innerHTML = `<div class="error-box">Selecciona al menos un tipo de jugada.</div>`;
   if (numeros.length === 0) return errBox.innerHTML = `<div class="error-box">Ingresa al menos un número (debe tener dos dígitos).</div>`;
-  if (state.sel.numTemp.length > 0) return errBox.innerHTML = `<div class="error-box">Tienes un número incompleto. Terminalo de escribir o bórralo.</div>`;
+  if (state.sel.numTemp.length > 0) return errBox.innerHTML = `<div class="error-box">Tienes un número incompleto. Termínalo de escribir o bórralo.</div>`;
   if (!monto || Number(monto) <= 0) return errBox.innerHTML = `<div class="error-box">Ingresa un monto válido.</div>`;
 
   const combinaciones = [];
-  const pales = getCombinations(numeros, 2);
-  const tripletas = getCombinations(numeros, 3);
-  const quinielas = numeros.map(n => [n]);
-
   let errorCombinaciones = null;
-  tipos.forEach(tipo => {
-    if (tipo === 'quiniela') {
-      if (quinielas.length === 0) errorCombinaciones = "Faltan números para Quiniela";
-      quinielas.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
-    } else if (tipo === 'pale') {
-      if (pales.length === 0) errorCombinaciones = "Se requieren al menos 2 números para Palé";
-      pales.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
-    } else if (tipo === 'tripleta') {
-      if (tripletas.length === 0) errorCombinaciones = "Se requieren al menos 3 números para Tripleta";
-      tripletas.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
-    } else if (tipo === 'superpale') {
-      // Súper Palé: el vendedor elige 2 loterías y 2 números.
-      // Se genera UNA SOLA jugada por par de números: [n1, n2].
-      // Ganador si n1 sale 1ro en sorteo A y n2 sale 1ro en sorteo B (o viceversa).
-      if (sorteosIds.length < 2) { errorCombinaciones = "Selecciona exactamente 2 sorteos para Súper Palé"; return; }
-      if (numeros.length < 2) { errorCombinaciones = "Ingresa exactamente 2 números para Súper Palé (ej: 25 y 46)"; return; }
-      if (numeros.length > 2) { errorCombinaciones = "El Súper Palé solo acepta 2 números"; return; }
-      // Una única combinación con los 2 números
-      combinaciones.push({ tipo, numeros: [numeros[0], numeros[1]], monto: Number(monto) });
+
+  const isSinglePale = tipos.length === 1 && tipos[0] === 'pale';
+  const isSingleTripleta = tipos.length === 1 && tipos[0] === 'tripleta';
+  const isSingleQuiniela = tipos.length === 1 && tipos[0] === 'quiniela';
+  const isSuperPale = tipos.includes('superpale');
+
+  if (isSuperPale) {
+    // Súper Palé: exactamente 2 sorteos y 2 números
+    if (sorteosIds.length < 2) { 
+      errorCombinaciones = "Selecciona exactamente 2 sorteos para Súper Palé"; 
+    } else if (numeros.length < 2) { 
+      errorCombinaciones = "Ingresa exactamente 2 números para Súper Palé (ej: 25 y 46)"; 
+    } else if (numeros.length > 2) { 
+      errorCombinaciones = "El Súper Palé solo acepta 2 números"; 
+    } else {
+      combinaciones.push({ tipo: 'superpale', numeros: [numeros[0], numeros[1]], monto: Number(monto) });
     }
-  });
+  } else if (!isCombinarMode && isSinglePale) {
+    // Modo Directo: Solo Palé (parejas consecutivas: [n1, n2], [n3, n4]...)
+    if (numeros.length < 2) {
+      errorCombinaciones = "Ingresa al menos 2 números para Palé.";
+    } else if (numeros.length % 2 !== 0) {
+      errorCombinaciones = `Falta un número para completar la última pareja de Palé (${numeros.length} números digitados).`;
+    } else {
+      for (let i = 0; i < numeros.length; i += 2) {
+        combinaciones.push({ tipo: 'pale', numeros: [numeros[i], numeros[i+1]], monto: Number(monto) });
+      }
+    }
+  } else if (!isCombinarMode && isSingleTripleta) {
+    // Modo Directo: Solo Tripleta (ternas consecutivas: [n1, n2, n3], [n4, n5, n6]...)
+    if (numeros.length < 3) {
+      errorCombinaciones = "Ingresa al menos 3 números para Tripleta.";
+    } else if (numeros.length % 3 !== 0) {
+      const faltan = 3 - (numeros.length % 3);
+      errorCombinaciones = `Faltan ${faltan} número(s) para completar la última Tripleta (${numeros.length} números digitados).`;
+    } else {
+      for (let i = 0; i < numeros.length; i += 3) {
+        const trip = [numeros[i], numeros[i+1], numeros[i+2]];
+        if (new Set(trip).size !== 3) {
+          errorCombinaciones = `Una tripleta no puede tener números repetidos (${trip.join('-')}).`;
+          break;
+        }
+        combinaciones.push({ tipo: 'tripleta', numeros: trip, monto: Number(monto) });
+      }
+    }
+  } else if (!isCombinarMode && isSingleQuiniela) {
+    // Modo Directo: Solo Quiniela (cada número 1 quiniela)
+    numeros.forEach(n => combinaciones.push({ tipo: 'quiniela', numeros: [n], monto: Number(monto) }));
+  } else {
+    // Modo Combinado (isCombinarMode === true O selección múltiple de tipos ej: QN + PL)
+    const pales = getCombinations(numeros, 2);
+    const tripletas = getCombinations(numeros, 3);
+    const quinielas = numeros.map(n => [n]);
+
+    tipos.forEach(tipo => {
+      if (tipo === 'quiniela') {
+        quinielas.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
+      } else if (tipo === 'pale') {
+        if (pales.length === 0) errorCombinaciones = "Se requieren al menos 2 números para combinar Palé";
+        pales.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
+      } else if (tipo === 'tripleta') {
+        if (tripletas.length === 0) errorCombinaciones = "Se requieren al menos 3 números para combinar Tripleta";
+        tripletas.forEach(nums => combinaciones.push({ tipo, numeros: nums, monto: Number(monto) }));
+      }
+    });
+  }
 
   if (errorCombinaciones || combinaciones.length === 0) {
     errBox.innerHTML = `<div class="error-box">${errorCombinaciones || "No se pudieron generar jugadas válidas."}</div>`;
@@ -1064,8 +1191,9 @@ function guardarJugada(doRender = true) {
   state.sel.monto = '';
   state.sel.sorteosIds = [];
   state.sel.tipos = []; // Se desactivan todos
+  state.sel.isCombinarMode = false;
 
-  if(doRender) render();
+  if (doRender) render();
 }
 
 async function imprimirTickets() {

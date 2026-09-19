@@ -17,10 +17,6 @@ function validarNumeros(tipo_jugada, numeros) {
   for (const n of numeros) {
     if (!esNumeroValido(n)) return `Número inválido: "${n}". Debe ser 00-99 (dos dígitos)`;
   }
-  // Super Palé permite el mismo número en ambas posiciones (apuesta en 2 loterías distintas)
-  if (new Set(numeros).size !== numeros.length && tipo_jugada !== 'superpale') {
-    return 'No se pueden repetir números en la misma jugada';
-  }
   return null;
 }
 
@@ -44,6 +40,16 @@ function evaluarJugada(tipo_jugada, numerosJugados, posicion, resultado) {
   }
 
   if (tipo_jugada === 'pale') {
+    if (numerosJugados[0] === numerosJugados[1]) {
+      const n = numerosJugados[0];
+      const indices = [];
+      ganadores.forEach((g, idx) => { if (g === n) indices.push(idx); });
+      if (indices.length >= 2) {
+        const posGanadora = `${indices[0] + 1}-${indices[1] + 1}`;
+        return { gano: true, aciertos: 2, detalle: `Acertó ${posGanadora}`, posicionGanadora: posGanadora };
+      }
+      return { gano: false, aciertos: indices.length, detalle: `${indices.length}/2 números acertados` };
+    }
     const idx1 = ganadores.indexOf(numerosJugados[0]);
     const idx2 = ganadores.indexOf(numerosJugados[1]);
     const gano = idx1 !== -1 && idx2 !== -1;
