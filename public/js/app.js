@@ -327,9 +327,38 @@ function formatDisplayNumbers() {
   return `<div style="width:100%;">${arr.join(' - ')}${subInfo}</div>`;
 }
 
+function getSorteoRank(s) {
+  const name = ((s.loteriaNombre || '') + ' ' + (s.nombre || '')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  if (name.includes('nacional') && !name.includes('gana')) return 1;
+  if (name.includes('gana mas') || name.includes('ganamas') || name.includes('gana')) return 2;
+  if (name.includes('leid') || name.includes('leis')) return 3;
+  if (name.includes('loteka')) return 4;
+  if (name.includes('real')) return 5;
+  if (name.includes('suerte') && (name.includes('dia') || name.includes('12:30'))) return 6;
+  if (name.includes('suerte') && (name.includes('tarde') || name.includes('noche') || name.includes('6:00') || name.includes('18:00'))) return 7;
+  if (name.includes('new york') && (name.includes('tarde') || name.includes('dia') || name.includes('14:30') || name.includes('2:30'))) return 8;
+  if (name.includes('new york') && (name.includes('noche') || name.includes('22:30') || name.includes('10:30'))) return 9;
+  if (name.includes('florida') && (name.includes('dia') || name.includes('13:30') || name.includes('1:30'))) return 10;
+  if (name.includes('florida') && (name.includes('noche') || name.includes('21:45') || name.includes('9:45'))) return 11;
+  if (name.includes('primera') && (name.includes('dia') || name.includes('12:00'))) return 12;
+  if (name.includes('primera') && (name.includes('noche') || name.includes('20:00') || name.includes('8:00'))) return 13;
+  if (name.includes('lotedom')) return 14;
+  if (name.includes('anguila')) return 15;
+  
+  return 100;
+}
+
 function renderVender() {
   const sorteosFlat = [];
   state.loterias.forEach(l => (l.sorteos || []).forEach(s => sorteosFlat.push({ ...s, loteriaNombre: l.nombre })));
+  
+  sorteosFlat.sort((a, b) => {
+    const rankA = getSorteoRank(a);
+    const rankB = getSorteoRank(b);
+    if (rankA !== rankB) return rankA - rankB;
+    return (a.hora || '').localeCompare(b.hora || '');
+  });
 
   const selectedSorteos = sorteosFlat.filter(s => state.sel.sorteosIds.includes(s.id));
   const sorteosNames = selectedSorteos.map(s => `• ${esc(s.loteriaNombre)} | ${s.hora}`).join('<br>');
