@@ -1356,43 +1356,93 @@ async function imprimirTickets() {
   }
 }
 
+function formatTicketWhatsApp(grupos, dateVentaStr) {
+  let msg = `🎟️ *LA BANKOTA* 🎟️\n`;
+  msg += `👤 *Vendedor:* ${state.user.codigoCorto || state.user.nombre}\n`;
+  msg += `📅 ${dateVentaStr}\n`;
+  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+
+  const keys = Object.keys(grupos);
+  keys.forEach((k, idx) => {
+    const g = grupos[k];
+    const horasSorteoFmt = g.horaSorteo.split(' y ').map(fmtHoraAmPm).join(' y ');
+    msg += `🎰 *${g.nombreSorteo.toUpperCase()}* [${horasSorteoFmt}]\n`;
+    
+    const bloques = { quiniela: [], pale: [], tripleta: [], superpale: [] };
+    g.jugadas.forEach(j => {
+      if (bloques[j.tipo_jugada]) bloques[j.tipo_jugada].push(j);
+    });
+
+    if (bloques.quiniela.length > 0) {
+      msg += `*QUINIELAS:*\n`;
+      bloques.quiniela.forEach(j => msg += `• QN ${j.numeros.join('-')}  ->  $${j.monto}\n`);
+    }
+    if (bloques.pale.length > 0) {
+      msg += `*PALÉS:*\n`;
+      bloques.pale.forEach(j => msg += `• PL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
+    }
+    if (bloques.tripleta.length > 0) {
+      msg += `*TRIPLETAS:*\n`;
+      bloques.tripleta.forEach(j => msg += `• TPL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
+    }
+    if (bloques.superpale.length > 0) {
+      msg += `*SÚPER PALÉS:*\n`;
+      bloques.superpale.forEach(j => msg += `• SPL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
+    }
+    
+    msg += `💵 *Subtotal:* $${g.total}\n`;
+    const primerFolio = g.jugadas[0].folio;
+    const linkVerif = `${location.origin}/verificar.html?empresa=la-bankota&folio=${encodeURIComponent(primerFolio)}`;
+    msg += `🔍 *Ver ticket con QR:* ${linkVerif}\n`;
+
+    if (idx < keys.length - 1) msg += `────────────────────\n`;
+  });
+
+  const granTotal = Object.values(grupos).reduce((s, g) => s + g.total, 0);
+  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+  msg += `💰 *TOTAL JUGADA: $${granTotal}*\n`;
+  msg += `⚠️ _Revise su ticket. No se cancela después de 5 minutos._`;
+
+  return msg;
+}
+
 async function compartirTicketsPDF(overlay) {
   const boletas = overlay.querySelectorAll('.boleta');
   if (!boletas.length) return;
 
-  showToast('Generando ticket térmico...');
+  showToast('Generando ticket térmico ligero...');
 
   try {
     const { jsPDF } = window.jspdf;
-    // Ancho estándar imprimible para rollo térmico (72mm para rollo de 80mm / escalable a 58mm)
     const rollWidthMm = 72;
     let pdf = null;
 
     for (let i = 0; i < boletas.length; i++) {
       const boleta = boletas[i];
-      // Renderizar con alta resolución
+      // Renderizar con scale 1.8 y compresión JPEG para mantener calidad nítida con peso ultra ligero (~30KB-50KB)
       const canvas = await html2canvas(boleta, {
-        scale: 3,
+        scale: 1.8,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false
       });
 
-      const imgData = canvas.toDataURL('image/png');
-      // Altura continua calculada proporcionalmente al contenido exacto del ticket + 4mm de margen
+      // Compresión JPEG de alta eficiencia (0.82)
+      const imgData = canvas.toDataURL('image/jpeg', 0.82);
       const rollHeightMm = Math.max(35, Math.round((canvas.height / canvas.width) * rollWidthMm) + 4);
 
       if (i === 0) {
         pdf = new jsPDF({
           orientation: 'portrait',
           unit: 'mm',
-          format: [rollWidthMm, rollHeightMm]
+          format: [rollWidthMm, rollHeightMm],
+          compress: true
         });
       } else {
         pdf.addPage([rollWidthMm, rollHeightMm], 'portrait');
       }
 
-      pdf.addImage(imgData, 'PNG', 0, 2, rollWidthMm, rollHeightMm - 4);
+      pdf.addImage(imgData, 'JPEG', 0, 2, rollWidthMm, rollHeightMm - 4, undefined, 'FAST');
     }
 
     if (!pdf) return;
@@ -1402,7 +1452,7 @@ async function compartirTicketsPDF(overlay) {
     const fileName = `ticket-la-bankota-${Date.now()}.pdf`;
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Intentar compartir el PDF vía Web Share API (Android/iOS WhatsApp, etc.)
+    // Intentar compartir vía nativa si el dispositivo lo soporta
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
@@ -1413,18 +1463,17 @@ async function compartirTicketsPDF(overlay) {
         return;
       } catch (err) {
         if (err.name === 'AbortError') return; // Usuario canceló
-        console.error('Share error:', err);
       }
     }
 
-    // Fallback: descargar el PDF directamente
+    // Descargar directo
     const url = URL.createObjectURL(pdfBlob);
     const a = document.createElement('a');
     a.href = url;
     a.download = fileName;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
-    showToast('Ticket PDF térmico guardado.');
+    showToast('Ticket PDF térmico guardado (~40 KB).');
 
   } catch (err) {
     console.error('Error generando PDF:', err);
@@ -1607,15 +1656,22 @@ function mostrarTicketsSeparados(jugadas) {
       ${ticketsHtml}
       
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
-        <button id="btn-compartir-ticket" 
+        <button id="btn-compartir-whatsapp" 
           style="width:100%; background:#25D366; color:#fff; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 0 #1da851;">
-          <span style="font-size:20px;">📲</span> Compartir por WhatsApp / Telegram
+          <span style="font-size:20px;">📲</span> Compartir por WhatsApp
         </button>
 
-        <button id="btn-imprimir-ticket-modal" 
-          style="width:100%; background:#0984e3; color:#fff; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 0 #0767b3;">
-          <span style="font-size:18px;">🖨️</span> Imprimir en Impresora Térmica
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button id="btn-imprimir-ticket-modal" 
+            style="flex:1; background:#0984e3; color:#fff; border:none; border-radius:8px; padding:12px 6px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 3px 0 #0767b3;">
+            <span style="font-size:16px;">🖨️</span> Imp. Térmica
+          </button>
+
+          <button id="btn-descargar-pdf" 
+            style="flex:1; background:#636e72; color:#fff; border:none; border-radius:8px; padding:12px 6px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 3px 0 #2d3436;">
+            <span style="font-size:16px;">📄</span> Guardar PDF
+          </button>
+        </div>
 
         <button id="cerrar-boleta" 
           style="width:100%; background:#f39c12; color:#fff; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; box-shadow:0 3px 0 #d35400;">
@@ -1626,7 +1682,13 @@ function mostrarTicketsSeparados(jugadas) {
   `;
   document.body.appendChild(overlay);
 
-  overlay.querySelector('#btn-compartir-ticket').addEventListener('click', () => {
+  overlay.querySelector('#btn-compartir-whatsapp').addEventListener('click', () => {
+    const texto = formatTicketWhatsApp(grupos, dateVentaStr);
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+    window.open(waUrl, '_blank');
+  });
+
+  overlay.querySelector('#btn-descargar-pdf').addEventListener('click', () => {
     compartirTicketsPDF(overlay);
   });
 
