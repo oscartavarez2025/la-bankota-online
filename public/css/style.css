@@ -245,6 +245,42 @@ input, select { font-family: inherit; }
 }
 .pos-keypad button:active { background: #d0d2d6; transform: translateY(1px); box-shadow: none; }
 
+/* Tecla C: Rojo sangre con texto blanco */
+.pos-keypad button[data-key="clear"] {
+  background: #c0392b !important;
+  color: #ffffff !important;
+  border-color: #962d22 !important;
+  box-shadow: 0 2px 0 #78241b !important;
+}
+.pos-keypad button[data-key="clear"]:active {
+  background: #a93226 !important;
+  box-shadow: none !important;
+}
+
+/* Tecla Retroceso / Borrar: Verde bosque con texto blanco */
+.pos-keypad button[data-key="del"] {
+  background: #1e7e34 !important;
+  color: #ffffff !important;
+  border-color: #145523 !important;
+  box-shadow: 0 2px 0 #0d3817 !important;
+}
+.pos-keypad button[data-key="del"]:active {
+  background: #145523 !important;
+  box-shadow: none !important;
+}
+
+/* Modal de Cobro Teclado C y Del */
+.btn-cobro-key[data-key="clear"] {
+  background: #c0392b !important;
+  color: #ffffff !important;
+  border-color: #962d22 !important;
+}
+.btn-cobro-key[data-key="del"] {
+  background: #1e7e34 !important;
+  color: #ffffff !important;
+  border-color: #145523 !important;
+}
+
 .pos-bottom { width: 100%; display: flex; gap: 6px; align-items: stretch; height: 52px; margin-bottom: 6px; box-sizing: border-box; }
 .monto-wrap {
   flex: 1; display: flex; background: #fff; border: 1.5px solid #000; align-items: center; padding: 0 10px; border-radius: 8px; box-sizing: border-box;
@@ -348,4 +384,52 @@ input, select { font-family: inherit; }
 @media (min-width: 640px) {
   .main { padding-top: 20px; }
   .tabbar { max-width: 640px; left: 50%; transform: translateX(-50%); border-radius: 16px 16px 0 0; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+}
+
+/* ---------- Impresión térmica continua (58mm / 80mm roll) ---------- */
+@media print {
+  @page {
+    margin: 0;
+    size: 80mm auto;
+  }
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .overlay, .overlay * {
+    visibility: visible;
+  }
+  .overlay {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  .overlay button, 
+  .overlay #btn-compartir-ticket, 
+  .overlay #btn-imprimir-ticket-modal, 
+  .overlay #cerrar-boleta {
+    display: none !important;
+  }
+  .boleta {
+    width: 100% !important;
+    max-width: 76mm !important;
+    margin: 0 auto 8mm auto !important;
+    padding: 6px 2px !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
 }

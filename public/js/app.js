@@ -1357,22 +1357,20 @@ async function imprimirTickets() {
 }
 
 async function compartirTicketsPDF(overlay) {
-  // Recopilar todos los nodos .boleta que están en el overlay
   const boletas = overlay.querySelectorAll('.boleta');
   if (!boletas.length) return;
 
-  // Mostrar toast de "Generando PDF..."
-  showToast('Generando PDF del ticket...');
+  showToast('Generando ticket térmico...');
 
   try {
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a6' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
+    // Ancho estándar imprimible para rollo térmico (72mm para rollo de 80mm / escalable a 58mm)
+    const rollWidthMm = 72;
+    let pdf = null;
 
     for (let i = 0; i < boletas.length; i++) {
       const boleta = boletas[i];
-      // Capturar el nodo como imagen con alta resolución
+      // Renderizar con alta resolución
       const canvas = await html2canvas(boleta, {
         scale: 3,
         useCORS: true,
@@ -1381,24 +1379,30 @@ async function compartirTicketsPDF(overlay) {
       });
 
       const imgData = canvas.toDataURL('image/png');
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      // Escalar para que quepa en la página con margen de 20pt
-      const margin = 20;
-      const availW = pageW - margin * 2;
-      const ratio = availW / imgW;
-      const drawH = imgH * ratio;
+      // Altura continua calculada proporcionalmente al contenido exacto del ticket + 4mm de margen
+      const rollHeightMm = Math.max(35, Math.round((canvas.height / canvas.width) * rollWidthMm) + 4);
 
-      if (i > 0) pdf.addPage();
-      pdf.addImage(imgData, 'PNG', margin, margin, availW, drawH);
+      if (i === 0) {
+        pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: [rollWidthMm, rollHeightMm]
+        });
+      } else {
+        pdf.addPage([rollWidthMm, rollHeightMm], 'portrait');
+      }
+
+      pdf.addImage(imgData, 'PNG', 0, 2, rollWidthMm, rollHeightMm - 4);
     }
+
+    if (!pdf) return;
 
     // Convertir PDF a Blob
     const pdfBlob = pdf.output('blob');
     const fileName = `ticket-la-bankota-${Date.now()}.pdf`;
     const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-    // Intentar compartir el PDF vía Web Share API (Android/iOS)
+    // Intentar compartir el PDF vía Web Share API (Android/iOS WhatsApp, etc.)
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
@@ -1420,7 +1424,7 @@ async function compartirTicketsPDF(overlay) {
     a.download = fileName;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 3000);
-    showToast('PDF descargado. Compártelo por WhatsApp o Telegram.');
+    showToast('Ticket PDF térmico guardado.');
 
   } catch (err) {
     console.error('Error generando PDF:', err);
@@ -1609,8 +1613,8 @@ function mostrarTicketsSeparados(jugadas) {
         </button>
 
         <button id="btn-imprimir-ticket-modal" 
-          style="width:100%; background:#0984e3; color:#fff; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; opacity:0.85;">
-          <span style="font-size:18px;">🖨️</span> Imprimir Ticket (Próximamente)
+          style="width:100%; background:#0984e3; color:#fff; border:none; border-radius:8px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 0 #0767b3;">
+          <span style="font-size:18px;">🖨️</span> Imprimir en Impresora Térmica
         </button>
 
         <button id="cerrar-boleta" 
@@ -1627,7 +1631,7 @@ function mostrarTicketsSeparados(jugadas) {
   });
 
   overlay.querySelector('#btn-imprimir-ticket-modal').addEventListener('click', () => {
-    showToast("Impresión térmica disponible próximamente.");
+    window.print();
   });
 
   overlay.querySelector('#cerrar-boleta').addEventListener('click', () => {
