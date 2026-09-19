@@ -394,19 +394,21 @@ function renderVender() {
       </div>
 
       <div class="pos-bottom">
-        <button class="pos-btn" id="btn-guardar" style="background:#4169E1; color:#ffffff; font-weight:800; font-size:16px; letter-spacing:1.1px; border-radius:8px; border:none; height:50px; flex:1; box-shadow:0 2px 0 #1d4ed8; margin-bottom:0; cursor:pointer;">GUARDAR</button>
-        <div class="monto-wrap ${state.ui.focusedField === 'monto' ? 'focused-field' : ''}" id="monto-wrap">
+        <button class="pos-btn" id="btn-guardar" style="background:#4169E1; color:#ffffff; font-weight:800; font-size:15px; letter-spacing:1.1px; border-radius:8px; border:none; height:52px; flex:0 0 110px; max-width:115px; box-shadow:0 2px 0 #1d4ed8; margin-bottom:0; cursor:pointer;">GUARDAR</button>
+        <div class="monto-wrap ${state.ui.focusedField === 'monto' ? 'focused-field' : ''}" id="monto-wrap" style="flex:1; max-width:140px;">
           <span class="currency">$</span>
           <input type="text" id="f-monto" inputmode="none" readonly placeholder="0.00" value="${esc(state.sel.monto)}">
         </div>
         <button class="icon-print-btn" id="btn-print" title="Imprimir">
-          <svg width="38" height="38" viewBox="0 0 48 48" fill="none">
-            <path d="M12 18H36V8C36 6.89543 35.1046 6 34 6H14C12.8954 6 12 6.89543 12 8V18Z" fill="#F1F5F9" stroke="#334155" stroke-width="2"/>
-            <path d="M10 16H38C40.2091 16 42 17.7909 42 20V32C42 34.2091 40.2091 36 38 36H36V40C36 41.1046 35.1046 42 34 42H14C12.8954 42 12 41.1046 12 40V36H10C7.79086 36 6 34.2091 6 32V20C6 17.7909 7.79086 16 10 16Z" fill="#E11D48" stroke="#9F1239" stroke-width="2"/>
-            <rect x="14" y="28" width="20" height="14" rx="2" fill="#FFFFFF" stroke="#334155" stroke-width="2"/>
-            <line x1="18" y1="33" x2="30" y2="33" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
-            <line x1="18" y1="37" x2="26" y2="37" stroke="#64748B" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="36" cy="22" r="2.5" fill="#22C55E"/>
+          <svg width="46" height="46" viewBox="0 0 48 48" fill="none">
+            <path d="M12 18H36V7C36 5.89543 35.1046 5 34 5H14C12.8954 5 12 5.89543 12 7V18Z" fill="#F8FAFC" stroke="#334155" stroke-width="2"/>
+            <path d="M16 10H32" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M16 13H28" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M9 16H39C41.2091 16 43 17.7909 43 20V32C43 34.2091 41.2091 36 39 36H36V41C36 42.1046 35.1046 43 34 43H14C12.8954 43 12 42.1046 12 41V36H9C6.79086 36 5 34.2091 5 32V20C5 17.7909 6.79086 16 9 16Z" fill="#DC2626" stroke="#991B1B" stroke-width="2"/>
+            <rect x="13" y="27" width="22" height="15" rx="2" fill="#FFFFFF" stroke="#334155" stroke-width="2"/>
+            <line x1="17" y1="32" x2="31" y2="32" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+            <line x1="17" y1="36" x2="27" y2="36" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="37" cy="21" r="2.5" fill="#22C55E"/>
           </svg>
         </button>
       </div>
@@ -1108,14 +1110,44 @@ function getCombinations(arr, size) {
 
 function guardarJugada(doRender = true) {
   const errBox = document.getElementById('vender-error');
-  errBox.innerHTML = '';
+  if (errBox) errBox.innerHTML = '';
   const { sorteosIds, tipos, numeros, monto, isCombinarMode } = state.sel;
   
-  if (sorteosIds.length === 0) return errBox.innerHTML = `<div class="error-box">Selecciona al menos un sorteo.</div>`;
-  if (tipos.length === 0) return errBox.innerHTML = `<div class="error-box">Selecciona al menos un tipo de jugada.</div>`;
-  if (numeros.length === 0) return errBox.innerHTML = `<div class="error-box">Ingresa al menos un número (debe tener dos dígitos).</div>`;
-  if (state.sel.numTemp.length > 0) return errBox.innerHTML = `<div class="error-box">Tienes un número incompleto. Termínalo de escribir o bórralo.</div>`;
-  if (!monto || Number(monto) <= 0) return errBox.innerHTML = `<div class="error-box">Ingresa un monto válido.</div>`;
+  // 1. Validar números
+  if (numeros.length === 0) {
+    state.ui.focusedField = 'numeros';
+    showToast("Digite los números primero.");
+    if (doRender) render();
+    return;
+  }
+  if (state.sel.numTemp.length > 0) {
+    state.ui.focusedField = 'numeros';
+    showToast("Tiene un número incompleto. Complételo o bórrelo.");
+    if (doRender) render();
+    return;
+  }
+
+  // 2. Validar monto
+  if (!monto || Number(monto) <= 0) {
+    state.ui.focusedField = 'monto';
+    showToast("Digite el monto a apostar.");
+    if (doRender) render();
+    return;
+  }
+
+  // 3. Validar sorteos: Si no ha seleccionado sorteo, abrir directamente la lista de loterías
+  if (sorteosIds.length === 0) {
+    state.ui.loteriasModalOpen = true;
+    if (doRender) render();
+    return;
+  }
+
+  // 4. Validar tipos de jugada
+  let activeTipos = [...tipos];
+  if (activeTipos.length === 0) {
+    activeTipos = ['quiniela'];
+    state.sel.tipos = ['quiniela'];
+  }
 
   const combinaciones = [];
   let errorCombinaciones = null;
