@@ -6,44 +6,69 @@
   <title>Verificar Boleta — LA BANKOTA</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@600;700&display=swap');
-    :root{--bg:#0c1a13;--surface:#12261b;--surface2:#1a3325;--border:#2b4a37;--gold:#e5b13e;--text:#f1ede1;--muted:#93a897;--win:#57c97a;--loss:#e1614a}
+    :root{--bg:#f1f3f5;--border:#dee2e6;--gold:#e5b13e;--text:#142016;--muted:#6b7a6e;--win:#27ae60;--loss:#e74c3c;--pending:#f39c12}
     *{box-sizing:border-box}
-    body{margin:0;font-family:'Inter',Arial,sans-serif;background:var(--bg);color:var(--text);padding:20px;min-height:100vh}
-    .wrap{max-width:420px;margin:20px auto}
-    .logo{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--gold);text-align:center;letter-spacing:1px;margin-bottom:18px}
-    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
-    .big{font-size:17px;font-weight:700;margin-bottom:10px}
-    .mono{font-family:'IBM Plex Mono',monospace}
-    .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}
-    .row span:first-child{color:var(--muted)}
-    .estado{font-size:22px;font-weight:800;text-align:center;margin:16px 0;padding:10px;border-radius:10px}
-    .estado.ganado{background:rgba(87,201,122,.15);color:var(--win)}
-    .estado.perdido{background:rgba(225,97,74,.15);color:var(--loss)}
-    .estado.pendiente{background:rgba(229,177,62,.15);color:var(--gold)}
-    .estado.anulado{background:rgba(147,168,151,.15);color:var(--muted)}
-    input{width:100%;min-height:46px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:0 12px;font-size:16px;margin-bottom:10px}
-    button{width:100%;min-height:46px;border:none;border-radius:9px;background:var(--gold);color:#1a1200;font-weight:700;font-size:15px}
-    label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+    body{margin:0;font-family:'Courier New',Courier,monospace;background:#e9ecef;color:#000;padding:20px;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .wrap{width:100%;max-width:360px;margin:0 auto}
+    .ticket-card{background:#fff;border:1px solid #ccc;border-radius:12px;padding:24px 20px;box-shadow:0 8px 24px rgba(0,0,0,0.12);text-align:center}
+    .t-title{font-size:22px;font-weight:900;letter-spacing:1px;margin-bottom:4px}
+    .t-meta{font-size:12px;color:#444;margin-bottom:10px;line-height:1.4}
+    .t-sorteo{font-size:15px;font-weight:800;margin-bottom:2px}
+    .t-sub{font-size:11px;color:#555;margin-bottom:10px}
+    hr{border:none;border-top:1px dashed #000;margin:12px 0}
+    .row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;text-align:left}
+    .row span:first-child{color:#333}
+    .row span:last-child{font-weight:bold}
+    .estado{font-size:18px;font-weight:900;text-align:center;margin:14px 0 8px;padding:10px;border-radius:8px;text-transform:uppercase;letter-spacing:1px}
+    .estado.ganado{background:#d4edda;color:#155724;border:1.5px solid #c3e6cb}
+    .estado.perdido{background:#f8d7da;color:#721c24;border:1.5px solid #f5c6cb}
+    .estado.pendiente{background:#fff3cd;color:#856404;border:1.5px solid #ffeeba}
+    .estado.anulado{background:#e2e3e5;color:#383d41;border:1.5px solid #d6d8db}
+    .qr-box{margin-top:14px}
+    .qr-box img{width:110px;height:110px;display:block;margin:0 auto 6px}
+    .folio-txt{font-size:10px;font-weight:bold;word-break:break-all}
+    input{width:100%;min-height:46px;background:#fff;border:1.5px solid #ced4da;color:#000;border-radius:8px;padding:0 12px;font-size:15px;margin-bottom:12px;font-family:'Courier New',monospace;text-align:center}
+    button{width:100%;min-height:48px;border:none;border-radius:8px;background:#0984e3;color:#fff;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 3px 0 #0767b3}
+    button:active{transform:translateY(1px);box-shadow:none}
+    label{font-size:12px;color:#495057;display:block;margin-bottom:4px;font-weight:bold;text-align:left}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <div class="logo">LA BANKOTA</div>
-    <div class="card"><div id="content"></div></div>
+    <div class="ticket-card">
+      <div class="t-title">LA BANKOTA</div>
+      <div id="content"></div>
+    </div>
   </div>
 <script>
 function getParam(name){ return new URL(location.href).searchParams.get(name); }
 function fmtMoney(n){ return 'RD$'+Number(n||0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+function fmtFecha(fStr) {
+  if (!fStr) return '—';
+  const clean = fStr.split('T')[0];
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const dia = parts[2];
+    const mes = meses[parseInt(parts[1], 10) - 1] || parts[1];
+    const anio = parts[0];
+    return `${dia}/${mes}/${anio}`;
+  }
+  return clean;
+}
+
 function renderForm(codigoEmpresa, folio, error) {
   document.getElementById('content').innerHTML = `
-    ${error ? `<div class="big" style="color:var(--loss)">${esc(error)}</div>` : ''}
-    <label>Código de empresa (indicado en tu boleta)</label>
-    <input id="f-codigo" value="${esc(codigoEmpresa||'')}" placeholder="ej. banca-demo">
-    <label>Folio</label>
-    <input id="f-folio" value="${esc(folio||'')}" placeholder="T-XXXXXXX-XXXXXXXXXX">
-    <button id="btn-buscar">Verificar boleta</button>
+    ${error ? `<div style="color:var(--loss);font-weight:bold;margin-bottom:10px;font-size:13px;">${esc(error)}</div>` : ''}
+    <div style="margin-top:14px;">
+      <label>Código de Empresa</label>
+      <input id="f-codigo" value="${esc(codigoEmpresa||'la-bankota')}" placeholder="ej. la-bankota">
+      <label>Folio del Ticket</label>
+      <input id="f-folio" value="${esc(folio||'')}" placeholder="T-XXXXXXXX-XXXXXXXX">
+      <button id="btn-buscar">Verificar Boleta</button>
+    </div>
   `;
   document.getElementById('btn-buscar').addEventListener('click', () => {
     const c = document.getElementById('f-codigo').value.trim();
@@ -55,31 +80,55 @@ function renderForm(codigoEmpresa, folio, error) {
 
 async function buscar(codigoEmpresa, folio) {
   const el = document.getElementById('content');
-  el.innerHTML = `<div class="big">Buscando folio <span class="mono">${esc(folio)}</span>…</div>`;
+  el.innerHTML = `<div style="padding:20px 0;font-size:14px;color:#555;">Consultando folio <b>${esc(folio)}</b>…</div>`;
   try {
     const res = await fetch(`/api/verificar/${encodeURIComponent(codigoEmpresa)}/${encodeURIComponent(folio)}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return renderForm(codigoEmpresa, folio, data.error || 'Folio no encontrado.');
     const j = data.jugada;
+    
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(location.href)}`;
+
     el.innerHTML = `
-      <div class="big mono">Folio ${esc(j.folio)}</div>
-      <div class="row"><span>Sorteo</span><span>${esc(j.sorteo_nombre || '—')}</span></div>
-      <div class="row"><span>Jugada</span><span>${esc(j.tipo_jugada)}</span></div>
-      <div class="row"><span>Fecha sorteo</span><span>${esc(j.fecha_sorteo)}</span></div>
-      <div class="row"><span>Números</span><span class="mono">${(j.numeros||[]).join(' - ')}</span></div>
-      <div class="row"><span>Vendedor</span><span>${esc(j.vendedor_nombre || '—')}</span></div>
-      <div class="estado ${esc(j.estado)}">${esc(j.estado).toUpperCase()}</div>
-      ${j.premio > 0 ? `<div class="row"><span>Premio</span><span class="mono">${fmtMoney(j.premio)}</span></div>` : ''}
-      <button id="btn-otra" style="margin-top:14px;background:transparent;border:1px solid var(--border);color:var(--text)">Verificar otra boleta</button>
+      <div class="t-meta">
+        Vendedor: ${esc(j.vendedor_nombre || 'Oficial')}<br>
+        Fecha: ${fmtFecha(j.fecha_sorteo)}
+      </div>
+      <div class="t-sorteo">${esc(j.sorteo_nombre || 'Sorteo Oficial')}</div>
+      <div class="t-sub">Jugada: ${esc(j.tipo_jugada).toUpperCase()}</div>
+      <hr>
+      <div class="row">
+        <span>Número(s):</span>
+        <span style="font-size:16px;letter-spacing:1px;">${(j.numeros||[]).join(' - ')}</span>
+      </div>
+      <div class="row">
+        <span>Monto Apostado:</span>
+        <span>${fmtMoney(j.monto)}</span>
+      </div>
+      ${j.premio > 0 ? `
+        <div class="row" style="color:var(--win);font-size:15px;">
+          <span>Premio Ganado:</span>
+          <span>${fmtMoney(j.premio)}</span>
+        </div>
+      ` : ''}
+      <hr>
+      <div class="estado ${esc(j.estado)}">
+        ${j.estado === 'ganado' ? '🎉 BOLETA GANADORA' : j.estado === 'pendiente' ? '⏳ PENDIENTE DE SORTEO' : j.estado === 'perdido' ? '❌ NO PREMIADA' : esc(j.estado).toUpperCase()}
+      </div>
+      <div class="qr-box">
+        <img src="${qrUrl}" alt="QR">
+        <div class="folio-txt">${esc(j.folio)}</div>
+      </div>
+      <button id="btn-otra" style="margin-top:16px;background:#f1f3f5;color:#000;border:1px solid #ced4da;box-shadow:none;">Verificar Otra Boleta</button>
     `;
-    document.getElementById('btn-otra').addEventListener('click', () => renderForm());
+    document.getElementById('btn-otra').addEventListener('click', () => renderForm(codigoEmpresa));
   } catch (e) {
     renderForm(codigoEmpresa, folio, 'Error de conexión al verificar.');
   }
 }
 
 (function () {
-  const codigoEmpresa = getParam('empresa');
+  const codigoEmpresa = getParam('empresa') || 'la-bankota';
   const folio = getParam('folio');
   if (codigoEmpresa && folio) buscar(codigoEmpresa, folio);
   else renderForm(codigoEmpresa, folio);

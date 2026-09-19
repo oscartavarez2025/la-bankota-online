@@ -1356,61 +1356,67 @@ async function imprimirTickets() {
   }
 }
 
-function formatTicketWhatsApp(grupos, dateVentaStr) {
-  let msg = `🎟️ *LA BANKOTA* 🎟️\n`;
-  msg += `👤 *Vendedor:* ${state.user.codigoCorto || state.user.nombre}\n`;
-  msg += `📅 ${dateVentaStr}\n`;
-  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+async function compartirTicketImagen(overlay) {
+  const boletas = overlay.querySelectorAll('.boleta');
+  if (!boletas.length) return;
 
-  const keys = Object.keys(grupos);
-  keys.forEach((k, idx) => {
-    const g = grupos[k];
-    const horasSorteoFmt = g.horaSorteo.split(' y ').map(fmtHoraAmPm).join(' y ');
-    msg += `🎰 *${g.nombreSorteo.toUpperCase()}* [${horasSorteoFmt}]\n`;
-    
-    const bloques = { quiniela: [], pale: [], tripleta: [], superpale: [] };
-    g.jugadas.forEach(j => {
-      if (bloques[j.tipo_jugada]) bloques[j.tipo_jugada].push(j);
+  showToast('Preparando ticket para WhatsApp...');
+
+  try {
+    const files = [];
+
+    for (let i = 0; i < boletas.length; i++) {
+      const boleta = boletas[i];
+      const canvas = await html2canvas(boleta, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      const fileName = `ticket-la-bankota-${Date.now()}-${i + 1}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+      files.push(file);
+    }
+
+    // Compartir imagen del ticket directamente por WhatsApp / Share nativo
+    if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+      try {
+        await navigator.share({
+          title: 'Ticket LA BANKOTA',
+          text: 'Ticket de jugada — LA BANKOTA',
+          files: files
+        });
+        return;
+      } catch (err) {
+        if (err.name === 'AbortError') return; // Usuario canceló
+        console.warn('Share error:', err);
+      }
+    }
+
+    // Si no soporta compartir imágenes directamente (ej: PC desktop)
+    files.forEach(file => {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
     });
+    showToast('Imagen del ticket descargada.');
 
-    if (bloques.quiniela.length > 0) {
-      msg += `*QUINIELAS:*\n`;
-      bloques.quiniela.forEach(j => msg += `• QN ${j.numeros.join('-')}  ->  $${j.monto}\n`);
-    }
-    if (bloques.pale.length > 0) {
-      msg += `*PALÉS:*\n`;
-      bloques.pale.forEach(j => msg += `• PL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
-    }
-    if (bloques.tripleta.length > 0) {
-      msg += `*TRIPLETAS:*\n`;
-      bloques.tripleta.forEach(j => msg += `• TPL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
-    }
-    if (bloques.superpale.length > 0) {
-      msg += `*SÚPER PALÉS:*\n`;
-      bloques.superpale.forEach(j => msg += `• SPL ${j.numeros.join('-')}  ->  $${j.monto}\n`);
-    }
-    
-    msg += `💵 *Subtotal:* $${g.total}\n`;
-    const primerFolio = g.jugadas[0].folio;
-    const linkVerif = `${location.origin}/verificar.html?empresa=la-bankota&folio=${encodeURIComponent(primerFolio)}`;
-    msg += `🔍 *Ver ticket con QR:* ${linkVerif}\n`;
-
-    if (idx < keys.length - 1) msg += `────────────────────\n`;
-  });
-
-  const granTotal = Object.values(grupos).reduce((s, g) => s + g.total, 0);
-  msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-  msg += `💰 *TOTAL JUGADA: $${granTotal}*\n`;
-  msg += `⚠️ _Revise su ticket. No se cancela después de 5 minutos._`;
-
-  return msg;
+  } catch (err) {
+    console.error('Error generando imagen del ticket:', err);
+    showToast('Error al procesar ticket.');
+  }
 }
 
 async function compartirTicketsPDF(overlay) {
   const boletas = overlay.querySelectorAll('.boleta');
   if (!boletas.length) return;
 
-  showToast('Generando ticket térmico ligero...');
+  showToast('Generando ticket térmico...');
 
   try {
     const { jsPDF } = window.jspdf;
@@ -1419,7 +1425,7 @@ async function compartirTicketsPDF(overlay) {
 
     for (let i = 0; i < boletas.length; i++) {
       const boleta = boletas[i];
-      // Renderizar con scale 1.8 y compresión JPEG para mantener calidad nítida con peso ultra ligero (~30KB-50KB)
+      // Renderizar con scale 1.8 y compresión JPEG (~30KB-50KB)
       const canvas = await html2canvas(boleta, {
         scale: 1.8,
         useCORS: true,
@@ -1427,7 +1433,6 @@ async function compartirTicketsPDF(overlay) {
         logging: false
       });
 
-      // Compresión JPEG de alta eficiencia (0.82)
       const imgData = canvas.toDataURL('image/jpeg', 0.82);
       const rollHeightMm = Math.max(35, Math.round((canvas.height / canvas.width) * rollWidthMm) + 4);
 
@@ -1456,13 +1461,13 @@ async function compartirTicketsPDF(overlay) {
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
       try {
         await navigator.share({
-          title: 'Ticket La Bankota',
-          text: 'Ticket de jugada - La Bankota',
+          title: 'Ticket LA BANKOTA',
+          text: 'Ticket de jugada — LA BANKOTA',
           files: [pdfFile]
         });
         return;
       } catch (err) {
-        if (err.name === 'AbortError') return; // Usuario canceló
+        if (err.name === 'AbortError') return;
       }
     }
 
@@ -1658,7 +1663,7 @@ function mostrarTicketsSeparados(jugadas) {
       <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
         <button id="btn-compartir-whatsapp" 
           style="width:100%; background:#25D366; color:#fff; border:none; border-radius:8px; padding:14px; font-size:16px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 0 #1da851;">
-          <span style="font-size:20px;">📲</span> Compartir por WhatsApp
+          <span style="font-size:20px;">📲</span> Enviar Ticket por WhatsApp
         </button>
 
         <div style="display:flex; gap:8px;">
@@ -1683,9 +1688,7 @@ function mostrarTicketsSeparados(jugadas) {
   document.body.appendChild(overlay);
 
   overlay.querySelector('#btn-compartir-whatsapp').addEventListener('click', () => {
-    const texto = formatTicketWhatsApp(grupos, dateVentaStr);
-    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
-    window.open(waUrl, '_blank');
+    compartirTicketImagen(overlay);
   });
 
   overlay.querySelector('#btn-descargar-pdf').addEventListener('click', () => {
